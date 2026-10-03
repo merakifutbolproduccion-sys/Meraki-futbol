@@ -12,6 +12,6 @@ export const Ascenso=()=>{const{slug}=useParams(),s=useData(async()=>{const[u,st
 export const Club=()=>{const{slug}=useParams(),s=useData(async()=>{const c=await api.club(slug);if(!c)return null;const[cr,n,m,st]=await Promise.all([api.chronicles(),api.news(null,100),api.matches(),api.standings()]);
  const mine=x=>x.home.slug===slug||x.away.slug===slug,i=st.findIndex?st.find(r=>r.club_id===c.id):null;
  return{c,cr:cr.filter(x=>mine(x.matches)),n:n.filter(x=>x.news_clubs.some(y=>y.clubs.slug===slug)),m:m.filter(mine),pos:i}},[slug]);
- return <Async s={s}>{({c,cr,n,m,pos})=><div className="w art" style={{maxWidth:'none'}}><T t={c.nombre} d={c.descripcion}/><h1>{c.nombre}{c.es_demo?' (demo)':''}</h1><p className="muted">{c.ciudad} · Estadio: {c.estadio||'—'}{pos?` · Posición: ${pos.posicion}º`:''}</p><p>{c.descripcion}</p>
+ return <Async s={s}>{({c,cr,n,m,pos})=><div className="w art" style={{maxWidth:'none'}}><T t={c.nombre} d={c.descripcion}/><h1>{c.nombre}{c.es_demo?' (demo)':''}</h1><p className="muted">{c.ciudad} · Estadio: {c.estadio||'—'}{pos?` · Posición: ${pos.posicion}º${pos.zona?` (${pos.zona})`:''}`:''}</p><p>{c.descripcion}</p>
  <Sec t="Crónicas"/>{cr.length?<Grid>{cr.map(ChrCard)}</Grid>:<p className="muted">Sin crónicas.</p>}<Sec t="Noticias"/>{n.length?<Grid>{n.map(NewsCard)}</Grid>:<p className="muted">Sin noticias.</p>}
  <Sec t="Resultados"/>{m.filter(x=>x.home_goals!=null).map(x=><MatchRow key={x.id} m={x}/>)}<Sec t="Próximos partidos"/>{m.filter(x=>x.home_goals==null).map(x=><MatchRow key={x.id} m={x}/>)}</div>}</Async>}
