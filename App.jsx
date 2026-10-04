@@ -13,7 +13,7 @@ export default function App(){
   <Route path="clubes" element={<L.Clubes/>}/><Route path="clubes/:slug" element={<D.Club/>}/>
   <Route path="resultados" element={<Navigate to="/cronicas" replace/>}/><Route path="tablas" element={<Navigate to="/cronicas" replace/>}/>
   <Route path="ascenso" element={<L.AscensoList/>}/><Route path="ascenso/:slug" element={<D.Ascenso/>}/>
-  <Route path="copas" element={<L.Copas/>}/><Route path="afa" element={<L.Afa/>}/>
+  <Route path="copas" element={<L.Copas/>}/><Route path="copas/:slug" element={<L.Copa/>}/><Route path="afa" element={<L.Afa/>}/>
   <Route path="entrevistas" element={<L.Entrevistas/>}/><Route path="entrevistas/:slug" element={<D.Entrevista/>}/>
   <Route path="noticias/:slug" element={<D.Noticia/>}/><Route path="buscar" element={<L.Buscar/>}/>
   <Route path="quienes-somos" element={<L.Quienes/>}/><Route path="*" element={<L.NotFound/>}/>
