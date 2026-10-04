@@ -11,7 +11,7 @@ export default function App(){
   <Route index element={<Home/>}/><Route path="primera" element={<Navigate to="/cronicas" replace/>}/>
   <Route path="cronicas" element={<L.Cronicas/>}/><Route path="cronicas/:slug" element={<D.Cronica/>}/>
   <Route path="clubes" element={<L.Clubes/>}/><Route path="clubes/:slug" element={<D.Club/>}/>
-  <Route path="resultados" element={<L.Resultados/>}/><Route path="tablas" element={<L.Tablas/>}/>
+  <Route path="resultados" element={<Navigate to="/cronicas" replace/>}/><Route path="tablas" element={<Navigate to="/cronicas" replace/>}/>
   <Route path="ascenso" element={<L.AscensoList/>}/><Route path="ascenso/:slug" element={<D.Ascenso/>}/>
   <Route path="copas" element={<L.Copas/>}/><Route path="afa" element={<L.Afa/>}/>
   <Route path="entrevistas" element={<L.Entrevistas/>}/><Route path="entrevistas/:slug" element={<D.Entrevista/>}/>

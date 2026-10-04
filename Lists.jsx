@@ -1,7 +1,7 @@
 import {Link,useSearchParams} from 'react-router-dom'
 import {api} from './api'
 import {Async,useData,Page,Sec,Grid,NewsCard,ChrCard,ClubCard,MatchRow,Table,fdate} from './ui'
-const Tabs=({k})=><div className="tabs">{[['cronicas','Crónicas'],['clubes','Clubes'],['resultados','Resultados'],['tablas','Tablas']].map(([x,l])=><Link key={x} className={'tag'+(x===k?' on':'')} to={'/'+x}>{l}</Link>)}</div>
+const Tabs=({k})=><div className="tabs">{[['cronicas','Crónicas'],['clubes','Clubes']].map(([x,l])=><Link key={x} className={'tag'+(x===k?' on':'')} to={'/'+x}>{l}</Link>)}</div>
 export const Cronicas=()=>{const s=useData(api.chronicles);return <Page title="Crónicas"><Tabs k="cronicas"/><Async s={s} empty="No hay crónicas publicadas todavía.">{l=><Grid>{l.map(ChrCard)}</Grid>}</Async></Page>}
 export const Clubes=()=>{const s=useData(api.clubs);return <Page title="Clubes"><Tabs k="clubes"/><Async s={s} empty="Todavía no hay clubes cargados.">{l=><div className="clubs">{l.map(ClubCard)}</div>}</Async></Page>}
 export const Resultados=()=>{const s=useData(api.matches);return <Page title="Resultados"><Tabs k="resultados"/><Async s={s} empty="No hay partidos cargados.">{l=>l.map(m=><div key={m.id}><small className="muted">{m.tournaments.nombre}{m.fecha_numero?` · Fecha ${m.fecha_numero}`:''} · {m.estado}</small><MatchRow m={m}/></div>)}</Async></Page>}
