@@ -19,4 +19,5 @@ export const api={
  updates:()=>sb.from('ascenso_updates').select('*, ascenso_update_clubs(clubs(nombre,slug))').eq('estado','publicada').order('numero_fecha',{ascending:false}).then(must),
  update:s=>one('ascenso_updates',`*, ascenso_update_clubs(clubs(nombre,slug)), ascenso_update_matches(rol, matches(${MATCH}))`,s),
  interviews:()=>sb.from('interviews').select('*').eq('estado','publicada').order('fecha',{ascending:false}).then(must),
- interview:s=>one('interviews','*',s)}
+ interview:s=>one('interviews','*',s),
+ settings:()=>sb.from('site_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({}))}
