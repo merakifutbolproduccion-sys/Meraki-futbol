@@ -1,13 +1,16 @@
 import {useEffect,useState} from 'react'
 import {Link,useNavigate} from 'react-router-dom'
 import {sb} from './supabase'
+import {optimizeImage,fmt} from './imagen'
 import {api} from './api'
 import {Async,useData,useTitle,slugify} from './ui'
-function Img({onUrl,label}){const[p,setP]=useState(null),[st,setSt]=useState('')
- async function pick(e){const f=e.target.files[0];if(!f)return;setP(URL.createObjectURL(f));setSt('Subiendo imagen…');onUrl(null)
-  const path=`${Date.now()}-${f.name.replace(/[^a-z0-9.]+/gi,'-')}`,{error}=await sb.storage.from('imagenes').upload(path,f)
+function Img({onUrl,label,max}){const[p,setP]=useState(null),[st,setSt]=useState('')
+ async function pick(e){const f0=e.target.files[0];if(!f0)return;onUrl(null);setP(null);setSt('Optimizando imagen…')
+  let r;try{r=await optimizeImage(f0,{maxSide:max||1600})}catch(er){e.target.value='';return setSt('Error: '+er.message)}
+  setP(URL.createObjectURL(r.file));setSt('Subiendo imagen…')
+  const path=`${Date.now()}-${r.file.name.replace(/[^a-z0-9.]+/gi,'-')}`,{error}=await sb.storage.from('imagenes').upload(path,r.file,{contentType:r.file.type})
   if(error)return setSt('Error al subir la imagen: '+error.message)
-  onUrl(sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl);setSt('Imagen subida ✔')}
+  onUrl(sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl);setSt(r.changed?`Imagen optimizada (${fmt(r.before)} → ${fmt(r.after)}) y subida ✔`:'Imagen subida ✔')}
  return <><label>{label||'Imagen principal'}</label><input type="file" accept="image/*" onChange={pick}/>{p&&<img src={p} alt="Vista previa" style={{maxWidth:'100%',maxHeight:180,marginTop:8}}/>}<small className="muted">{st}</small></>}
 const Opts=({l,v='id',t='nombre'})=>l.map(x=><option key={x[v]} value={x[v]}>{x[t]}</option>)
 const Msg=({m})=>m?<p className={m.err?'err':''} style={m.err?null:{color:'#7ee39a'}}>{m.t}</p>:null
@@ -35,15 +38,15 @@ function ChrForm(){const nav=useNavigate(),o=useData(()=>Promise.all([api.clubs(
   <label>Redactor (único; se sugiere el del local, podés cambiarlo)</label><select value={w} onChange={e=>setW(e.target.value)} required><option value="" disabled>Elegir…</option><Opts l={wr} t="nombre_visible"/></select>
   <label>Título</label><input name="t" required/><label>Bajada</label><input name="b"/><label>Contenido</label><textarea name="c" rows="6" required/><Img onUrl={setImg}/><label>Estado</label><select name="est"><option value="publicada">publicada</option><option value="borrador">borrador</option></select>
   <Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Publicando…':'Publicar'}</button></p></form>}</Async>}
-async function upImg(file){const path=`escudos/${Date.now()}-${file.name.replace(/[^a-z0-9.]+/gi,'-')}`,{error}=await sb.storage.from('imagenes').upload(path,file);if(error)throw error;return sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl}
+async function upImg(file){const r=await optimizeImage(file,{maxSide:600});const path=`escudos/${Date.now()}-${r.file.name.replace(/[^a-z0-9.]+/gi,'-')}`,{error}=await sb.storage.from('imagenes').upload(path,r.file,{contentType:r.file.type});if(error)throw error;return sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl}
 function ClubsAdmin(){const[v,setV]=useState(0),s=useData(api.clubs,[v]),[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null)
  async function add(e){e.preventDefault();if(busy)return;const fm=e.target,f=new FormData(fm);setBusy(true);setM(null);const nombre=f.get('n').trim()
   const{error}=await sb.from('clubs').insert({nombre,slug:slugify(f.get('s')||nombre),ciudad:f.get('c'),estadio:f.get('e'),escudo_url:img});setBusy(false)
   if(error)return setM({err:1,t:error.code==='23505'?'Ya existe un club con ese slug.':error.message});fm.reset();setImg(null);setM({t:'Club guardado.'});setV(x=>x+1)}
  async function del(c){if(!confirm(`¿Eliminar el club "${c.nombre}"?`))return;const{error}=await sb.from('clubs').delete().eq('id',c.id);if(error)return setM({err:1,t:error.code==='23503'?'Este club tiene crónicas o partidos. Eliminalas primero en la pestaña Contenido.':error.message});setM({t:'Club eliminado.'});setV(x=>x+1)}
- async function escudo(c,file){if(!file)return;setM({t:`Subiendo escudo de ${c.nombre}…`});try{const url=await upImg(file);const{error}=await sb.from('clubs').update({escudo_url:url}).eq('id',c.id);if(error)throw error;setM({t:`Escudo de ${c.nombre} guardado ✔`});setV(x=>x+1)}catch(er){setM({err:1,t:'Error: '+er.message})}}
+ async function escudo(c,file){if(!file)return;setM({t:`Optimizando y subiendo escudo de ${c.nombre}…`});try{const url=await upImg(file);const{error}=await sb.from('clubs').update({escudo_url:url}).eq('id',c.id);if(error)throw error;setM({t:`Escudo de ${c.nombre} guardado ✔`});setV(x=>x+1)}catch(er){setM({err:1,t:'Error: '+er.message})}}
  return <div><h3>Clubes y escudos</h3><Msg m={m}/><Async s={s} empty="No hay clubes cargados.">{l=>l.map(c=><div key={c.id} style={{display:'flex',gap:10,alignItems:'center',padding:'8px 0',borderBottom:'1px solid var(--line)'}}>{c.escudo_url?<img src={c.escudo_url} width="32" height="36" alt="" style={{objectFit:'contain'}}/>:<span className="shield" style={{'--c':'#1f6b3a',width:32,height:36}}/>}<span style={{flex:1}}>{c.nombre}{c.es_demo?' (demo)':''}</span><label className="tag" style={{cursor:'pointer',margin:0}}>Cambiar escudo<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>escudo(c,e.target.files[0])}/></label><button className="tag" onClick={()=>del(c)}>Eliminar</button></div>)}</Async>
- <form onSubmit={add}><h3 style={{marginTop:20}}>Nuevo club</h3><label>Nombre</label><input name="n" required/><label>Slug (opcional)</label><input name="s"/><label>Ciudad</label><input name="c"/><label>Estadio</label><input name="e"/><Img onUrl={setImg} label="Escudo"/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar club'}</button></p></form></div>}
+ <form onSubmit={add}><h3 style={{marginTop:20}}>Nuevo club</h3><label>Nombre</label><input name="n" required/><label>Slug (opcional)</label><input name="s"/><label>Ciudad</label><input name="c"/><label>Estadio</label><input name="e"/><Img onUrl={setImg} label="Escudo" max={600}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar club'}</button></p></form></div>}
 function WritersAdmin(){const[v,setV]=useState(0),o=useData(()=>Promise.all([api.clubs(),api.writers()]),[v]),[busy,setBusy]=useState(false),[m,setM]=useState(null)
  async function add(e){e.preventDefault();if(busy)return;const fm=e.target,f=new FormData(fm);setBusy(true);setM(null);const n=f.get('n').trim(),a=f.get('a').trim()
   const{error}=await sb.from('writers').insert({nombre:n,apellido:a,nombre_visible:(f.get('v')||`${n} ${a}`).trim(),club_id:f.get('c')||null,descripcion:f.get('d')});setBusy(false)
@@ -71,7 +74,7 @@ const KEYS=[['quienes_somos','Texto de ¿Quiénes somos?',1],['afa_texto','Texto
 function SettingsAdmin(){const[v,setV]=useState(0),s=useData(api.settings,[v]),[busy,setBusy]=useState(false),[m,setM]=useState(null),[logo,setLogo]=useState(null)
  async function save(e){e.preventDefault();if(busy)return;const f=new FormData(e.target);setBusy(true);setM(null);const rows=KEYS.map(([k])=>({key:k,value:f.get(k)||''}));if(logo)rows.push({key:'afa_logo',value:logo})
   const{error}=await sb.from('site_settings').upsert(rows);setBusy(false);if(error)return setM({err:1,t:error.message});setM({t:'Guardado ✔'});setV(x=>x+1)}
- return <Async s={s}>{c=><form onSubmit={save} key={v}><h3>Textos y sitio</h3>{KEYS.map(([k,l,big])=><div key={k}><label>{l}</label>{big?<textarea name={k} rows="5" defaultValue={c[k]||''}/>:<input name={k} defaultValue={c[k]||''} placeholder="https://..."/>}</div>)}<Img onUrl={setLogo} label="Logo de la AFA"/>{c.afa_logo&&<p className="muted">Ya hay un logo cargado. Si subís otro, lo reemplaza.</p>}<Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar'}</button></p></form>}</Async>}
+ return <Async s={s}>{c=><form onSubmit={save} key={v}><h3>Textos y sitio</h3>{KEYS.map(([k,l,big])=><div key={k}><label>{l}</label>{big?<textarea name={k} rows="5" defaultValue={c[k]||''}/>:<input name={k} defaultValue={c[k]||''} placeholder="https://..."/>}</div>)}<Img onUrl={setLogo} label="Logo de la AFA" max={800}/>{c.afa_logo&&<p className="muted">Ya hay un logo cargado. Si subís otro, lo reemplaza.</p>}<Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar'}</button></p></form>}</Async>}
 export default function Admin(){useTitle('Admin');const[s,setS]=useState({loading:true}),[tab,setTab]=useState('n'),[e,setE]=useState(null),[busy,setBusy]=useState(false)
  useEffect(()=>{const chk=async ses=>{if(!ses)return setS({});const{data,error}=await sb.rpc('is_admin');setS({user:ses.user,admin:data===true,error:error?.message})}
   sb.auth.getSession().then(({data})=>chk(data.session));const{data:l}=sb.auth.onAuthStateChange((_,ses)=>setTimeout(()=>chk(ses),0));return()=>l.subscription.unsubscribe()},[])
