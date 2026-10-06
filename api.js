@@ -20,4 +20,8 @@ export const api={
  update:s=>one('ascenso_updates',`*, ascenso_update_clubs(clubs(nombre,slug)), ascenso_update_matches(rol, matches(${MATCH}))`,s),
  interviews:()=>sb.from('interviews').select('*').eq('estado','publicada').order('fecha',{ascending:false}).then(must),
  interview:s=>one('interviews','*',s),
+ programs:()=>sb.from('programs').select('*').eq('activo',true).order('orden').order('nombre').then(must),
+ program:s=>one('programs','*',s),
+ schedule:()=>sb.from('schedule').select('*, programs(nombre,slug,es_demo,activo)').eq('activo',true).order('dia').order('hora_inicio').then(must).then(l=>l.filter(x=>x.programs&&x.programs.activo)),
+ radio:()=>sb.from('radio_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({})),
  settings:()=>sb.from('site_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({}))}
