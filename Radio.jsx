@@ -1,4 +1,4 @@
-import {useEffect} from 'react'
+import {useEffect,useState} from 'react'
 import {Link,useParams} from 'react-router-dom'
 import {api} from './api'
 import logo from './logo.webp'
@@ -11,7 +11,7 @@ const useT=t=>useEffect(()=>{document.title=t?`FM Meraki | ${t}`:'FM Meraki'},[t
 const bg=u=>u?{backgroundImage:`url(${u})`,backgroundSize:'cover',backgroundPosition:'center'}:null
 const Head=({t})=>{useT(t);return <h2 className="sec pad" style={{marginTop:24}}>{t}</h2>}
 export const Social=({d})=>{const has=SOC.some(([k])=>d?.[k])||d?.whatsapp;return has?<div className="chips">{SOC.filter(([k])=>d[k]).map(([k,n])=><a key={k} className="tag" href={d[k]} target="_blank" rel="noopener noreferrer">{n}</a>)}{d.whatsapp&&<a className="tag" href={wa(d.whatsapp)} target="_blank" rel="noopener noreferrer">WhatsApp</a>}</div>:null}
-const Live=({r,children='Escuchar en vivo →'})=>r.stream_url?<a className="btn" href={r.stream_url} target="_blank" rel="noopener noreferrer">{children}</a>:<Link className="btn" to="/en-vivo">{children}</Link>
+const Live=({children='Escuchar en vivo →'})=><Link className="btn" to="/en-vivo">{children}</Link>
 const PCard=(p,emo)=><Link key={p.id} className="card" to={'/programas/'+p.slug}><div className={'ph'+(emo?' pe':'')} data-emo={emo?(p.emoji||''):undefined} role="img" aria-label={p.nombre} style={bg(p.logo_url)}/><div className="b"><span className="tag">Programa</span>{p.es_demo&&<span className="tag">Demo</span>}<h3>{p.nombre}</h3><small>{p.conductores||''}</small><span className="btn" style={{marginTop:'auto'}}>Ver programa →</span></div></Link>
 export function RadioHome(){useT('');const s=useData(()=>Promise.all([api.radio(),api.programs()]))
  return <Async s={s}>{([r,ps])=><><section className="hero ph"><div className="w" style={{width:'100%',display:'flex',flexDirection:'column',gap:10}}><span className="tag">Radio</span><h1>{r.titulo_portada||r.nombre||'FM Meraki'}</h1><p>{r.texto_portada||r.descripcion||'[Demo] Completá el texto de la portada desde /admin > FM Radio.'}</p><div className="chips"><Live r={r}/><Link className="btn" to="/grilla">Ver la grilla</Link></div></div></section>
@@ -27,6 +27,15 @@ function PV({p,r,b}){useT(p.nombre);const has=SOC.some(([k])=>p[k])||p.whatsapp
   {p.quienes_somos&&<><Sec t="¿Quiénes somos?"/><p style={{whiteSpace:'pre-wrap'}}>{p.quienes_somos}</p></>}<Sec t="Redes del programa"/>{has?<Social d={p}/>:<p className="muted">Este programa todavía no cargó sus redes.</p>}
   <div className="chips" style={{marginTop:16}}><Live r={r}/>{p.link_externo&&<a className="btn" href={p.link_externo} target="_blank" rel="noopener noreferrer">Más información →</a>}{p.slug==='meraki-futbol'&&<Link className="btn" to="/futbol">Entrar a Meraki Fútbol →</Link>}</div></article>}
 export function Programa(){const{slug}=useParams(),s=useData(async()=>{const[p,sc,r]=await Promise.all([api.program(slug),api.schedule(),api.radio()]);return p&&p.activo?{p,r,b:sc.filter(x=>x.program_id===p.id)}:null},[slug]);return <Async s={s}>{d=><PV {...d}/>}</Async>}
-export function EnVivo(){const s=useData(api.radio);return <div className="w"><Head t="Escuchar en vivo"/><Async s={s}>{r=>r.stream_url?<p><Live r={r}>Escuchar {r.nombre||'FM Meraki'} en vivo →</Live></p>:<p className="muted">El link para escuchar en vivo todavía no está configurado (Admin &gt; FM Radio).</p>}</Async></div>}
+const YT_CANAL='UCs-VFLueSgXxofbQ0lYrbKA',YT_URL='https://youtube.com/@fmmeraki'
+const ytId=v=>{const x=String(v||'').trim();if(/^[\w-]{11}$/.test(x))return x;const m=x.match(/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);return m?m[1]:''}
+const ytCanal=v=>{const m=String(v||'').match(/UC[\w-]{22}/);return m?m[0]:YT_CANAL}
+function Player({r}){const[on,setOn]=useState(false),vid=ytId(r.youtube_live_id),src='https://www.youtube.com/embed/'+(vid?vid+'?':'live_stream?channel='+ytCanal(r.youtube_channel_id)+'&')+'autoplay=1&playsinline=1&rel=0'
+ return <div style={{maxWidth:760,margin:'0 auto'}}><div style={{position:'relative',aspectRatio:'16/9',borderRadius:12,overflow:'hidden',border:'1px solid #1f6b3a',background:'linear-gradient(135deg,#145c30,#07130d 70%,#020504)'}}>
+  {on?<iframe title={'Radio en vivo '+(r.nombre||'FM Meraki')} src={src} style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0}} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>
+  :<button type="button" onClick={()=>setOn(true)} aria-label="Reproducir FM Meraki en vivo" style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0,cursor:'pointer',background:'transparent',color:'inherit',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}><img src={r.logo||logo} alt="" width="96" height="96" style={{width:96,height:96,borderRadius:'50%'}}/><span className="btn" style={{fontSize:'1.1rem'}}>▶ Escuchar en vivo</span><small className="muted">{r.nombre||'FM Meraki'}</small></button>}
+ </div><p className="muted" style={{textAlign:'center',fontSize:'.9rem'}}>Si el video no arranca es porque ahora no estamos transmitiendo en vivo.</p>
+ <div className="chips" style={{justifyContent:'center'}}><a className="btn" href={r.youtube_url||YT_URL} target="_blank" rel="noopener noreferrer">VER CANAL DE YOUTUBE</a></div></div>}
+export function EnVivo(){const s=useData(api.radio);return <div className="w"><Head t="Escuchar en vivo"/><Async s={s}>{r=><Player r={r}/>}</Async></div>}
 export function Contacto(){const s=useData(api.radio);return <div className="w"><Head t="Contacto"/><Async s={s}>{r=>r.contacto||r.whatsapp?<><p style={{whiteSpace:'pre-wrap'}}>{r.contacto}</p><Social d={r}/></>:<p className="muted">[Provisional] Datos de contacto a definir desde /admin &gt; FM Radio.</p>}</Async></div>}
 export function Nosotros(){const s=useData(api.radio);return <div className="w"><Head t="¿Quiénes somos?"/><Async s={s}>{r=>r.quienes_somos?<p style={{whiteSpace:'pre-wrap'}}>{r.quienes_somos}</p>:<p className="muted">[Provisional] El texto de FM Meraki se escribe en Admin &gt; Textos y sitio.</p>}</Async></div>}
