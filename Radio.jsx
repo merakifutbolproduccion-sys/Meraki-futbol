@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react'
+import {useEffect,useRef,useState} from 'react'
 import {Link,useParams} from 'react-router-dom'
 import {api} from './api'
 import logo from './logo.webp'
@@ -49,12 +49,24 @@ export function Programa(){const{slug}=useParams(),s=useData(async()=>{const[p,s
 const YT_CANAL='UCs-VFLueSgXxofbQ0lYrbKA',YT_URL='https://youtube.com/@fmmeraki'
 const ytId=v=>{const x=String(v||'').trim();if(/^[\w-]{11}$/.test(x))return x;const m=x.match(/(?:v=|youtu\.be\/|\/live\/|\/embed\/|\/shorts\/)([\w-]{11})/);return m?m[1]:''}
 const ytCanal=v=>{const m=String(v||'').match(/UC[\w-]{22}/);return m?m[0]:YT_CANAL}
-function Player({r}){const[on,setOn]=useState(false),vid=ytId(r.youtube_live_id),src='https://www.youtube.com/embed/'+(vid?vid+'?':'live_stream?channel='+ytCanal(r.youtube_channel_id)+'&')+'autoplay=1&playsinline=1&rel=0'
+const STREAM='https://az03.streaminghd.net.ar/8040/;'
+function Player({r}){const[mode,setMode]=useState(null),[lv,setLv]=useState(null),[st,setSt]=useState(''),au=useRef(null),nom=r.nombre||'FM Meraki',url=(/^https?:\/\/.+/i.test(r.audio_url||'')&&!/miradio\.net\.ar\/pwa/i.test(r.audio_url))?r.audio_url:STREAM
+ useEffect(()=>{let ok=true;fetch('/api/live').then(x=>x.json()).then(d=>ok&&setLv(d)).catch(()=>ok&&setLv({live:false}));return()=>{ok=false}},[])
+ useEffect(()=>()=>{const a=au.current;if(a){a.pause();a.removeAttribute('src')}},[])
+ const live=!!lv?.live,vid=lv?.id||ytId(r.youtube_live_id),src='https://www.youtube.com/embed/'+(vid?vid+'?':'live_stream?channel='+ytCanal(r.youtube_channel_id)+'&')+'autoplay=1&playsinline=1&rel=0'
+ function stop(){const a=au.current;if(a){a.pause();a.removeAttribute('src');a.load()}setMode(null)}
+ function play(){setSt('');if(live){setMode('yt');return}
+  const a=au.current||(au.current=new Audio());a.onerror=()=>{setSt('No pudimos conectar la radio. Probá de nuevo en unos segundos.');setMode(null)};a.onplaying=()=>setSt('');a.onwaiting=()=>setSt('Conectando…')
+  a.src=url;setMode('audio');setSt('Conectando…')
+  const p=a.play();if(p&&p.catch)p.catch(()=>{setSt('No pudimos conectar la radio. Probá de nuevo en unos segundos.');setMode(null)})
+  try{if('mediaSession' in navigator)navigator.mediaSession.metadata=new MediaMetadata({title:nom+' en vivo',artist:nom,artwork:[{src:r.logo||logo}]})}catch{}}
+ const box={position:'absolute',inset:0,width:'100%',height:'100%',border:0,background:'transparent',color:'inherit',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}
  return <div style={{maxWidth:760,margin:'0 auto'}}><div style={{position:'relative',aspectRatio:'16/9',borderRadius:12,overflow:'hidden',border:'1px solid #1f6b3a',background:'linear-gradient(135deg,#145c30,#07130d 70%,#020504)'}}>
-  {on?<iframe title={'Radio en vivo '+(r.nombre||'FM Meraki')} src={src} style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0}} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>
-  :<button type="button" onClick={()=>setOn(true)} aria-label="Reproducir FM Meraki en vivo" style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0,cursor:'pointer',background:'transparent',color:'inherit',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12}}><img src={r.logo||logo} alt="" width="96" height="96" style={{width:96,height:96,borderRadius:'50%'}}/><span className="btn" style={{fontSize:'1.1rem'}}>▶ Escuchar en vivo</span><small className="muted">{r.nombre||'FM Meraki'}</small></button>}
- </div><p className="muted" style={{textAlign:'center',fontSize:'.9rem'}}>Si el video no arranca es porque ahora no estamos transmitiendo en vivo.</p>
- <div className="chips" style={{justifyContent:'center'}}><a className="btn" href={r.youtube_url||YT_URL} target="_blank" rel="noopener noreferrer">VER CANAL DE YOUTUBE</a><Oyente r={r}/></div></div>}
+  {mode==='yt'?<iframe title={'En vivo '+nom} src={src} style={{position:'absolute',inset:0,width:'100%',height:'100%',border:0}} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>
+  :mode==='audio'?<div style={box}><img src={r.logo||logo} alt="" width="96" height="96" style={{width:96,height:96,borderRadius:'50%'}}/><b>🔴 {st||'Escuchando '+nom+' en vivo'}</b><button type="button" className="btn" onClick={stop} style={{border:0,cursor:'pointer'}}>⏹ Detener</button></div>
+  :<button type="button" onClick={play} aria-label={'Escuchar '+nom+' en vivo'} style={{...box,cursor:'pointer'}}><img src={r.logo||logo} alt="" width="96" height="96" style={{width:96,height:96,borderRadius:'50%'}}/><span className="btn" style={{fontSize:'1.1rem'}}>{live?'▶ Ver el directo':'▶ Escuchar en vivo'}</span><small className="muted">{live?'🔴 Estamos en vivo en YouTube':nom}</small></button>}
+ </div>{st&&mode!=='audio'&&<p className="err" style={{textAlign:'center'}}>{st}</p>}
+ <div className="chips" style={{justifyContent:'center',marginTop:12}}><a className="btn" href={r.youtube_url||YT_URL} target="_blank" rel="noopener noreferrer">VER CANAL DE YOUTUBE</a><Oyente r={r}/></div></div>}
 export function EnVivo(){const s=useData(api.radio);return <div className="w"><Head t="Escuchar en vivo"/><Async s={s}>{r=><><OnAir style={{maxWidth:760,margin:'0 auto 14px'}}/><Player r={r}/></>}</Async></div>}
 export function Contacto(){const s=useData(api.radio);return <div className="w"><Head t="Contacto"/><Async s={s}>{r=>r.contacto||r.whatsapp?<><p style={{whiteSpace:'pre-wrap'}}>{r.contacto}</p><Social d={r}/></>:<p className="muted">[Provisional] Datos de contacto a definir desde /admin &gt; FM Radio.</p>}</Async></div>}
 export function Nosotros(){const s=useData(api.radio);return <div className="w"><Head t="¿Quiénes somos?"/><Async s={s}>{r=>r.quienes_somos?<p style={{whiteSpace:'pre-wrap'}}>{r.quienes_somos}</p>:<p className="muted">[Provisional] El texto de FM Meraki se escribe en Admin &gt; Textos y sitio.</p>}</Async></div>}
