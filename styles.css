@@ -62,3 +62,5 @@ footer{background:linear-gradient(180deg,#07130d,#020604);border-top:2px solid #
 /* zonas de lectura: fondo claro para legibilidad */
 .paper{background:#eef2ee;color:#0b1a11;--mut:#4d6356;--line:#c5d6ca;padding:22px 18px;margin:20px auto;border-top:4px solid #1faa4a;border-image:linear-gradient(90deg,#1faa4a,#030806) 1;box-shadow:0 2px 12px #0006}
 .paper .sec{color:#0b1a11}.paper .match{background:#dfe9e2;color:#0b1a11}.paper .tag{background:#dff3e5;color:#0f6b2e;border-color:#b9e0c5}
+
+.ph.pe:after{content:attr(data-emo)}

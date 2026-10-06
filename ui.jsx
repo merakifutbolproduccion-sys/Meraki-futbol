@@ -20,3 +20,5 @@ export function Share({title}){const[ok,setOk]=useState(false),url=typeof locati
  async function copy(){try{await navigator.clipboard.writeText(url);setOk(true);setTimeout(()=>setOk(false),2000)}catch{}}
  async function nat(){if(navigator.share){try{await navigator.share({title,url})}catch{}}else copy()}
  return <div className="chips" style={{margin:'14px 0'}}><a className="btn" href={wa} target="_blank" rel="noopener noreferrer">Compartir en WhatsApp</a><button type="button" className="tag" onClick={nat}>Compartir…</button><button type="button" className="tag" onClick={copy}>{ok?'¡Link copiado!':'Copiar link'}</button></div>}
+
+export const Brand=({n})=>{const[a,...b]=String(n||'').toUpperCase().split(' ');return <span>{a}{b.length>0&&<> <b>{b.join(' ')}</b></>}</span>}

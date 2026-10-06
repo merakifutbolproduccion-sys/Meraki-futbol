@@ -24,4 +24,5 @@ export const api={
  program:s=>one('programs','*',s),
  schedule:()=>sb.from('schedule').select('*, programs(nombre,slug,es_demo,activo)').eq('activo',true).order('dia').order('hora_inicio').then(must).then(l=>l.filter(x=>x.programs&&x.programs.activo)),
  radio:()=>sb.from('radio_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({})),
- settings:()=>sb.from('site_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({}))}
+ settings:async()=>{const kv=await sb.from('site_settings').select('key,value').then(must).then(r=>Object.fromEntries(r.map(x=>[x.key,x.value]))).catch(()=>({}));const p=await sb.from('programs').select('*').eq('slug','meraki-futbol').maybeSingle().then(r=>r.data).catch(()=>null)
+  if(!p)return kv;const soc=['instagram_url','facebook_url','youtube_url','tiktok_url','x_url'].filter(k=>p[k]).map(k=>[k,p[k]]);return{...kv,...Object.fromEntries(soc),quienes_somos:p.quienes_somos||kv.quienes_somos||'',fut_nombre:p.nombre,fut_logo:p.logo_url||''}}}
