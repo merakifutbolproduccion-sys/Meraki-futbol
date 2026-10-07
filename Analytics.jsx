@@ -1,8 +1,9 @@
 import {useEffect} from 'react'
 import {useLocation} from 'react-router-dom'
 import {initGA,trackPage} from './analytics.js'
-// Si la variable de Vercel no llegó al build (o trae espacios), se usa el ID de la propiedad: es público, no es un secreto.
-const ID=String(import.meta.env.VITE_GA_MEASUREMENT_ID||'G-9285BKP9G0').trim()
+// ID de medición de la propiedad "Meraki.futbol" en Google Analytics. Es público, no es un secreto.
+// Va fijo en el código para que una variable de Vercel mal cargada no pueda desviar los datos a otra propiedad.
+const ID='G-928B5KPG90'
 // Registra una página vista en cada cambio de ruta (no solo en la carga inicial). No mide /admin.
 export default function Analytics(){
   const loc=useLocation()
