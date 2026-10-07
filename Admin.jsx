@@ -5,6 +5,9 @@ import {optimizeImage,fmt} from './imagen'
 import {api} from './api'
 import {Async,useData,useTitle,slugify} from './ui'
 import NewsEditor from './NewsEditor'
+import {RichEditor,ImgPick} from './Editor'
+import {isHtml,sanitize,textToHtml,htmlToText} from './editorUtils'
+import {useSeo,SeoPanel,SEO_COLS,isColumnError} from './SeoPanel'
 function Img({onUrl,label,max}){const[p,setP]=useState(null),[st,setSt]=useState('')
  async function pick(e){const f0=e.target.files[0];if(!f0)return;onUrl(null);setP(null);setSt('Optimizando imagen…')
   let r;try{r=await optimizeImage(f0,{maxSide:max||1600})}catch(er){e.target.value='';return setSt('Error: '+er.message)}
@@ -19,20 +22,24 @@ const CATS=[['primera','Primera'],['primera-nacional','Primera Nacional'],['prim
 const fechas=n=>Array.from({length:n},(_,i)=>`Fecha ${i+1}`),KO=['Octavos de final','Cuartos de final','Semifinal','Final']
 // Instancias por torneo (se puede editar acá). Torneos que no figuran usan un número de fecha libre.
 const INST={'primera-division':[...fechas(16),...KO],'copa-argentina':['32avos de final','16avos de final',...KO],'trofeo-de-campeones':['Final'],'supercopa-argentina':['Final'],'supercopa-internacional':['Final'],'recopa-de-campeones':['Fecha 1','Fecha 2'],'copa-libertadores':['Ronda 2','Ronda 3',...fechas(6),...KO],'copa-sudamericana':[...fechas(6),'Playoff',...KO]}
-function ChrForm(){const nav=useNavigate(),o=useData(()=>Promise.all([api.clubs(),api.writers(),api.tournaments()])),[img,setImg]=useState(null),[w,setW]=useState(''),[hn,setHn]=useState(''),[an,setAn]=useState(''),[to,setTo]=useState(''),[busy,setBusy]=useState(false),[m,setM]=useState(null)
+function ChrForm(){const nav=useNavigate(),o=useData(()=>Promise.all([api.clubs(),api.writers(),api.tournaments()])),[img,setImg]=useState(null),[html,setHtml]=useState(''),[upl,setUpl]=useState(false),[w,setW]=useState(''),[hn,setHn]=useState(''),[an,setAn]=useState(''),[to,setTo]=useState(''),[tt,setTt]=useState(''),[bb,setBb]=useState(''),[busy,setBusy]=useState(false),[m,setM]=useState(null)
+ const tn=(o.data?.[2]||[]).find(z=>z.id===to)?.nombre,seo=useSeo({x:null,titulo:tt,bajada:bb,html,img,writer:w,sugTema:hn.trim()&&an.trim()?`${hn.trim()} vs ${an.trim()}`:'',sugTemas:[hn.trim(),an.trim(),tn].filter(Boolean).join(', ')})
  const find=(cl,name)=>cl.find(c=>slugify(c.nombre)===slugify(name||''))
  function onHome(v,cl,wr){const c=find(cl,v),x=c&&wr.find(r=>r.club_id===c.id);if(x)setW(x.id)} // sugiere el cronista del local
  async function club(cl,name,cat){const n=name.trim(),c=find(cl,n);if(c)return c.id
   const sl=slugify(n),ex=await sb.from('clubs').select('id,activo').eq('slug',sl).maybeSingle();if(ex.error)throw ex.error
   if(ex.data){if(!ex.data.activo){const u=await sb.from('clubs').update({activo:true,categoria:cat||null}).eq('id',ex.data.id);if(u.error)throw u.error}return ex.data.id}
   const ins=await sb.from('clubs').insert({nombre:n,slug:sl,activo:true,categoria:cat||null}).select('id').single();if(ins.error)throw ins.error;return ins.data.id} // club nuevo: queda creado y visible en Clubes del panel
- async function save(e,cl){e.preventDefault();if(busy)return;const f=new FormData(e.target),h=f.get('h').trim(),a=f.get('a').trim()
+ async function save(e,cl){e.preventDefault();if(busy||upl)return;const f=new FormData(e.target),h=f.get('h').trim(),a=f.get('a').trim()
   if(!h||!a)return setM({err:1,t:'Escribí o elegí los dos equipos.'});if(slugify(h)===slugify(a))return setM({err:1,t:'Local y visitante deben ser distintos.'});if(!w)return setM({err:1,t:'Elegí un redactor (o "Redacción Meraki").'})
-  if(img===null&&e.target.querySelector('input[type=file]').files.length)return setM({err:1,t:'Esperá a que termine de subir la imagen.'})
+  if(!htmlToText(html).trim())return setM({err:1,t:'Escribí el contenido de la crónica.'})
   setBusy(true);setM(null)
   try{const hid=await club(cl,h,f.get('ch')),aid=await club(cl,a,f.get('ca')),ins=f.get('i'),fn=ins&&/^Fecha \d+$/.test(ins)?+ins.slice(6):(f.get('n')?+f.get('n'):null)
-   const{data,error}=await sb.rpc('publish_chronicle',{p_tournament:f.get('to'),p_fecha_numero:fn,p_instancia:ins||(fn?'Fecha '+fn:null),p_fecha:f.get('d')?new Date(f.get('d')).toISOString():null,p_home:hid,p_away:aid,p_hg:+f.get('hg'),p_ag:+f.get('ag'),p_writer:w,p_titulo:f.get('t'),p_bajada:f.get('b'),p_contenido:f.get('c'),p_imagen:img,p_estado:f.get('est')})
-   if(error)throw error;nav('/cronicas/'+data)}
+   const{data,error}=await sb.rpc('publish_chronicle',{p_tournament:f.get('to'),p_fecha_numero:fn,p_instancia:ins||(fn?'Fecha '+fn:null),p_fecha:f.get('d')?new Date(f.get('d')).toISOString():null,p_home:hid,p_away:aid,p_hg:+f.get('hg'),p_ag:+f.get('ag'),p_writer:w,p_titulo:f.get('t'),p_bajada:f.get('b'),p_contenido:sanitize(html),p_imagen:img,p_estado:f.get('est')})
+   if(error)throw error
+   const u=await sb.from('chronicles').update(seo.cols()).eq('slug',data) // datos SEO sobre la misma crónica recién publicada
+   if(u.error){setBusy(false);return setM({err:1,t:`La crónica se publicó (/cronicas/${data}), pero no se guardaron los datos SEO: ${u.error.message}. ${isColumnError(u.error)?'Falta ejecutar migracion-seo-cronicas.sql en Supabase. ':''}No la vuelvas a publicar: completá el SEO desde Contenido → Editar.`})}
+   nav('/cronicas/'+data)}
   catch(er){setBusy(false);setM({err:1,t:(er.message||'').includes('ya tiene una crónica')?'Este partido ya tiene una crónica.':(er.message||'Error al publicar')})}}
  return <Async s={o}>{([cl,wr,tl])=>{const slug=tl.find(x=>x.id===to)?.slug,opts=INST[slug];return <form onSubmit={e=>save(e,cl)}><h3>Nueva crónica</h3>
   <label>Torneo</label><select name="to" required value={to} onChange={e=>setTo(e.target.value)}><option value="" disabled>Elegir…</option><Opts l={tl}/></select>
@@ -43,8 +50,8 @@ function ChrForm(){const nav=useNavigate(),o=useData(()=>Promise.all([api.clubs(
   <label>Equipo visitante (elegí de la lista o escribilo)</label><input name="a" list="clubes-lista" required autoComplete="off" value={an} onChange={e=>setAn(e.target.value)}/>{an.trim()&&!find(cl,an)&&<><label>«{an.trim()}» es un club nuevo: ¿de qué categoría es?</label><select name="ca" required defaultValue=""><option value="" disabled>Elegir…</option>{CATS.map(([v,n])=><option key={v} value={v}>{n}</option>)}</select></>}
   <label>Goles local / visitante</label><div style={{display:'flex',gap:8}}><input name="hg" type="number" min="0" defaultValue="0" required/><input name="ag" type="number" min="0" defaultValue="0" required/></div>
   <label>Redactor (se sugiere el del local; podés elegir "Redacción Meraki")</label><select value={w} onChange={e=>setW(e.target.value)} required><option value="" disabled>Elegir…</option><Opts l={wr} t="nombre_visible"/></select>
-  <label>Título</label><input name="t" required/><label>Bajada</label><input name="b"/><label>Contenido</label><textarea name="c" rows="6" required/><Img onUrl={setImg}/><label>Estado</label><select name="est"><option value="publicada">publicada</option><option value="borrador">borrador</option></select>
-  <Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Publicando…':'Publicar'}</button></p></form>}}</Async>}
+  <label>Título</label><input name="t" required value={tt} onChange={e=>setTt(e.target.value)}/><label>Bajada</label><input name="b" value={bb} onChange={e=>setBb(e.target.value)}/><label>Contenido</label><RichEditor initial="" onChange={setHtml} onBusy={setUpl}/><ImgPick value={img} onUrl={setImg} onBusy={setUpl}/><SeoPanel s={seo} titulo={tt} img={img}/><label>Estado</label><select name="est"><option value="publicada">publicada</option><option value="borrador">borrador</option></select>
+  <Msg m={m}/><p><button className="btn" disabled={busy||upl} style={{border:0,cursor:'pointer'}}>{busy?'Publicando…':upl?'Subiendo imagen…':'Publicar'}</button></p></form>}}</Async>}
 async function upImg(file){const r=await optimizeImage(file,{maxSide:600});const path=`escudos/${Date.now()}-${r.file.name.replace(/[^a-z0-9.]+/gi,'-')}`,{error}=await sb.storage.from('imagenes').upload(path,r.file,{contentType:r.file.type});if(error)throw error;return sb.storage.from('imagenes').getPublicUrl(path).data.publicUrl}
 function ClubsAdmin(){const[v,setV]=useState(0),s=useData(api.clubs,[v]),[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null)
  async function add(e){e.preventDefault();if(busy)return;const fm=e.target,f=new FormData(fm);setBusy(true);setM(null);const nombre=f.get('n').trim()
@@ -61,12 +68,19 @@ function WritersAdmin(){const[v,setV]=useState(0),o=useData(()=>Promise.all([api
   if(error)return setM({err:1,t:error.message});fm.reset();setM({t:'Cronista guardado.'});setV(x=>x+1)}
  async function delW(w){if(!confirm(`¿Eliminar a ${w.nombre_visible}?`))return;const{error}=await sb.from('writers').delete().eq('id',w.id);if(error)return setM({err:1,t:error.code==='23503'?'Este cronista tiene crónicas. Eliminalas primero en Contenido.':error.message});setV(x=>x+1)}
  return <Async s={o}>{([cl,wr])=><div><h3>Cronistas</h3><form onSubmit={add}><label>Nombre</label><input name="n" required/><label>Apellido</label><input name="a" required/><label>Nombre visible (opcional)</label><input name="v"/><label>Club del que es cronista</label><select name="c"><option value="">—</option><Opts l={cl}/></select><label>Descripción (opcional)</label><input name="d"/><Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar cronista'}</button></p></form><h3>Cargados</h3>{wr.map(w=><div key={w.id} style={{display:'flex',gap:8,alignItems:'center',padding:'6px 0'}}><span style={{flex:1}}>{w.nombre_visible}{w.es_demo?' (demo)':''} — {cl.find(c=>c.id===w.club_id)?.nombre||'sin club'}</span><button className="tag" onClick={()=>delW(w)}>Eliminar</button></div>)}</div>}</Async>}
-function EditForm({t,x,done}){const[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null)
- async function save(e){e.preventDefault();if(busy)return;const f=new FormData(e.target);setBusy(true);setM(null)
-  const u={titulo:f.get('t'),bajada:f.get('b'),contenido:f.get('c'),estado:f.get('e')};if(img)u.imagen_url=img
+function EditForm({t,x,done}){const[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null),[html,setHtml]=useState(()=>isHtml(x.contenido)?sanitize(x.contenido):textToHtml(x.contenido)),[upl,setUpl]=useState(false),[tt,setTt]=useState(x.titulo||''),[bb,setBb]=useState(x.bajada||''),lo=useData(()=>t==='c'?Promise.all([api.clubs(),api.tournaments()]):Promise.resolve([[],[]]))
+ const seo=useSeo({x,titulo:tt,bajada:bb,html,img:img||x.imagen_url,writer:x.writer_id,lists:lo.data?{cl:lo.data[0],to:lo.data[1]}:{cl:[],to:[]}})
+ async function save(e){e.preventDefault();if(busy||upl)return;const f=new FormData(e.target)
+  if(!htmlToText(html).trim())return setM({err:1,t:'Escribí el contenido.'})
+  setBusy(true);setM(null)
+  const u={titulo:f.get('t'),bajada:f.get('b'),contenido:sanitize(html),estado:f.get('e')};if(img)u.imagen_url=img
   if(t==='c'&&u.estado==='publicada'&&!x.publicada_at)u.publicada_at=new Date().toISOString()
-  const{error}=await sb.from(t==='n'?'news':'chronicles').update(u).eq('id',x.id);setBusy(false);if(error)return setM({err:1,t:error.message});done()}
- return <form onSubmit={save} style={{background:'var(--bg2)',padding:12,margin:'8px 0'}}><label>Título</label><input name="t" defaultValue={x.titulo} required/><label>Bajada</label><input name="b" defaultValue={x.bajada||''}/><label>Contenido</label><textarea name="c" rows="8" defaultValue={x.contenido||''}/><Img onUrl={setImg} label="Cambiar imagen (opcional)"/><label>Estado</label><select name="e" defaultValue={x.estado}><option value="borrador">borrador</option><option value="publicada">publicada</option></select><Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar cambios'}</button> <button type="button" className="tag" onClick={done}>Cancelar</button></p></form>}
+  const tbl=t==='n'?'news':'chronicles',run=r=>sb.from(tbl).update(r).eq('id',x.id)
+  let r=await run(t==='c'?{...u,...seo.cols()}:u),legacy=false
+  if(t==='c'&&isColumnError(r.error)){r=await run(u);legacy=!r.error} // base sin columnas SEO: se guarda lo básico
+  setBusy(false);if(r.error)return setM({err:1,t:r.error.message})
+  if(legacy)return setM({err:1,t:'Guardada, pero la base todavía no tiene los campos SEO. Ejecutá migracion-seo-cronicas.sql en Supabase y volvé a guardar.'});done()}
+ return <form onSubmit={save} style={{background:'var(--bg2)',padding:12,margin:'8px 0'}}><label>Título</label><input name="t" value={tt} onChange={e=>setTt(e.target.value)} required/><label>Bajada</label><input name="b" value={bb} onChange={e=>setBb(e.target.value)}/><label>Contenido</label><RichEditor initial={html} onChange={setHtml} onBusy={setUpl}/><Img onUrl={setImg} label="Cambiar imagen (opcional)"/>{t==='c'&&<SeoPanel s={seo} titulo={tt} img={img||x.imagen_url}/>}<label>Estado</label><select name="e" defaultValue={x.estado}><option value="borrador">borrador</option><option value="publicada">publicada</option></select><Msg m={m}/><p><button className="btn" disabled={busy||upl} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':upl?'Subiendo imagen…':'Guardar cambios'}</button> <button type="button" className="tag" onClick={done}>Cancelar</button></p></form>}
 function ContentAdmin(){const[v,setV]=useState(0),[m,setM]=useState(null),[ed,setEd]=useState(null),s=useData(async()=>{const[n,c]=await Promise.all([sb.from('news').select('*').order('created_at',{ascending:false}).limit(50),sb.from('chronicles').select('*').order('created_at',{ascending:false}).limit(50)]);if(n.error)throw n.error;if(c.error)throw c.error;return{n:n.data,c:c.data}},[v])
  async function run(p,ok){const{error}=await p;if(error)return setM({err:1,t:error.message});setM({t:ok});setV(x=>x+1)}
  const del=(t,x)=>confirm(`¿Eliminar "${x.titulo}"? No se puede deshacer.`)&&run(t==='n'?sb.from('news').delete().eq('id',x.id):sb.from('matches').delete().eq('id',x.match_id),'Eliminado.')
