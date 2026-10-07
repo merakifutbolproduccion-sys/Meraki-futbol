@@ -7,39 +7,10 @@
     {
       "source": "/:tipo(noticias|cronicas|entrevistas)/:slug",
       "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Instagram|Pinterest).*"
-        }
+        { "type": "header", "key": "user-agent", "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Instagram|Pinterest).*" }
       ],
       "destination": "/api/og?tipo=:tipo&slug=:slug"
     },
-    {
-      "source": "/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Instagram|Pinterest).*"
-        }
-      ],
-      "destination": "/api/share?p=/"
-    },
-    {
-      "source": "/:p((?!api/|assets/|.*\\..*).+)",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Instagram|Pinterest).*"
-        }
-      ],
-      "destination": "/api/share?p=/:p"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
