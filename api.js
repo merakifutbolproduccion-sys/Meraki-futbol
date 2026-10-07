@@ -15,7 +15,8 @@ export const api={
  clubs:()=>sb.from('clubs').select('*').eq('activo',true).order('nombre').then(must),
  club:s=>one('clubs','*',s),
  tournaments:()=>sb.from('tournaments').select('*').order('nombre').then(must),
- writers:()=>sb.from('writers').select('*').eq('activo',true).order('apellido').then(must),
+ writers:async()=>{let r=await sb.from('writers').select('*, writer_clubs(club_id)').eq('activo',true).order('apellido');const emb=!r.error;if(r.error)r=await sb.from('writers').select('*').eq('activo',true).order('apellido');if(r.error)throw r.error
+  return r.data.map(w=>({...w,club_ids:emb?(w.writer_clubs||[]).map(x=>x.club_id):[w.club_id].filter(Boolean)}))},
  updates:()=>sb.from('ascenso_updates').select('*, ascenso_update_clubs(clubs(nombre,slug))').eq('estado','publicada').order('numero_fecha',{ascending:false}).then(must),
  update:s=>one('ascenso_updates',`*, ascenso_update_clubs(clubs(nombre,slug)), ascenso_update_matches(rol, matches(${MATCH}))`,s),
  interviews:()=>sb.from('interviews').select('*').eq('estado','publicada').order('fecha',{ascending:false}).then(must),
