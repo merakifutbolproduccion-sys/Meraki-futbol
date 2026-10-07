@@ -3,7 +3,7 @@ import {sb} from './supabase'
 import {api} from './api'
 import {Async,useData,slugify,fdate} from './ui'
 import {RichEditor,ImgPick,Vista} from './Editor'
-import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editor'
+import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editorUtils'
 
 // Columnas nuevas (se agregan con migracion-seo-noticias.sql). Si todavía no existen, se guarda igual lo básico.
 const NEWCOLS=['seo_titulo','meta_descripcion','imagen_alt','tema_principal','temas','updated_at']

@@ -1,7 +1,7 @@
 import {useEffect,useRef,useState} from 'react'
 import {sb} from './supabase'
 import {optimizeImage,fmt} from './imagen'
-import {isHtml,sanitize,textToHtml,organizeHtml} from './editor'
+import {isHtml,sanitize,textToHtml,organizeHtml} from './editorUtils'
 
 // Sube una imagen al mismo bucket "imagenes" que ya usa el panel (optimizada en el navegador).
 export async function uploadImage(file,max=1600){
@@ -59,7 +59,8 @@ export function RichEditor({initial,onChange,onBusy}){
    const alt=prompt('Texto alternativo (ALT): describí lo que se ve en la foto. Es importante para accesibilidad y buscadores.','');if(alt===null)return say('Imagen cancelada.')
    const cap=prompt('Descripción visible debajo de la foto (opcional). Dejalo vacío para no mostrar ninguna.','')
    const q=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
-   focus();document.execCommand('insertHTML',false,`<figure contenteditable="false"><img src="${q(r.url)}" alt="${q(alt.trim())}">${cap&&cap.trim()?`<figcaption>${q(cap.trim())}</figcaption>`:''}</figure><p><br></p>`)
+   focus();{const s=getSelection();if(s.rangeCount&&!s.isCollapsed)s.collapseToEnd()} // no pisar el texto que estaba seleccionado
+   document.execCommand('insertHTML',false,`<figure contenteditable="false"><img src="${q(r.url)}" alt="${q(alt.trim())}">${cap&&cap.trim()?`<figcaption>${q(cap.trim())}</figcaption>`:''}</figure><p><br></p>`)
    fixFigures();emit();say('Imagen insertada ✔ (tocala para editar su ALT o eliminarla).')}
   catch(er){say('Error: '+er.message)}finally{onBusy?.(false)}}
  function editImage(fig){const img=fig.querySelector('img'),cap=fig.querySelector('figcaption')
@@ -77,7 +78,7 @@ export function RichEditor({initial,onChange,onBusy}){
   say(r.subs||r.quotes?`Se detectaron ${r.subs} subtítulo(s) y ${r.quotes} cita(s). Revisalos: si algo no va, usá Deshacer ↶.`:'Los párrafos ya están ordenados. No se detectaron subtítulos ni citas claras (ante la duda no se cambia nada).')}
  return <div>
   <div className="tabs" style={{margin:'4px 0'}} role="toolbar" aria-label="Herramientas del editor">
-   <button {...BTN} onClick={()=>toggle('p')}>Párrafo</button><button {...BTN} onClick={()=>toggle('h2')}>Subtítulo</button>
+   <button {...BTN} onClick={()=>toggle('p')}>Párrafo</button><button {...BTN} onClick={()=>toggle('h2')}>Subtítulo</button><button {...BTN} onClick={()=>toggle('h3')}>Subtítulo 2</button>
    <button {...BTN} onClick={()=>cmd('bold')}><b>B</b></button><button {...BTN} onClick={()=>cmd('italic')}><i>I</i></button>
    <button {...BTN} onClick={link}>Enlace</button><button {...BTN} onClick={()=>file.current.click()}>Imagen</button>
    <button {...BTN} onClick={()=>toggle('blockquote')}>Cita</button><button {...BTN} onClick={()=>cmd('insertUnorderedList')}>Lista</button>

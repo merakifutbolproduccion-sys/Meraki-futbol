@@ -4,6 +4,7 @@ import {sb} from './supabase'
 import {optimizeImage,fmt} from './imagen'
 import {api} from './api'
 import {Async,useData,useTitle,slugify} from './ui'
+import NewsEditor from './NewsEditor'
 function Img({onUrl,label,max}){const[p,setP]=useState(null),[st,setSt]=useState('')
  async function pick(e){const f0=e.target.files[0];if(!f0)return;onUrl(null);setP(null);setSt('Optimizando imagen…')
   let r;try{r=await optimizeImage(f0,{maxSide:max||1600})}catch(er){e.target.value='';return setSt('Error: '+er.message)}
@@ -14,18 +15,6 @@ function Img({onUrl,label,max}){const[p,setP]=useState(null),[st,setSt]=useState
  return <><label>{label||'Imagen principal'}</label><input type="file" accept="image/*" onChange={pick}/>{p&&<img src={p} alt="Vista previa" style={{maxWidth:'100%',maxHeight:180,marginTop:8}}/>}<small className="muted">{st}</small></>}
 const Opts=({l,v='id',t='nombre'})=>l.map(x=><option key={x[v]} value={x[v]}>{x[t]}</option>)
 const Msg=({m})=>m?<p className={m.err?'err':''} style={m.err?null:{color:'#7ee39a'}}>{m.t}</p>:null
-function NewsForm(){const o=useData(()=>Promise.all([api.clubs(),api.writers(),api.tournaments()])),[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null)
- async function save(e){e.preventDefault();if(busy)return;const fm=e.target,f=new FormData(fm);setBusy(true);setM(null)
-  const titulo=f.get('t').trim(),slug=slugify(f.get('slug')||titulo)
-  const{data,error}=await sb.from('news').insert({titulo,slug,bajada:f.get('b'),contenido:f.get('c'),imagen_url:img,categoria:f.get('cat'),tournament_id:f.get('to')||null,writer_id:f.get('w')||null,fecha:f.get('d')?new Date(f.get('d')).toISOString():new Date().toISOString(),estado:f.get('est')}).select('id').single()
-  if(error){setBusy(false);return setM({err:1,t:error.code==='23505'?'Ya existe una noticia con ese slug.':error.message})}
-  const cl=f.getAll('cl');if(cl.length){const r=await sb.from('news_clubs').insert(cl.map(club_id=>({news_id:data.id,club_id})));if(r.error){setBusy(false);return setM({err:1,t:'Noticia guardada, pero fallaron los clubes: '+r.error.message})}}
-  setBusy(false);fm.reset();setImg(null);setM({t:`Noticia guardada (${f.get('est')}). URL: /noticias/${slug}`})}
- return <Async s={o}>{([cl,wr,to])=><form onSubmit={save}><h3>Nueva noticia</h3><label>Título</label><input name="t" required/><label>Slug (opcional)</label><input name="slug"/><label>Bajada</label><input name="b"/><label>Contenido</label><textarea name="c" rows="6" required/><Img onUrl={setImg}/>
-  <label>Categoría</label><select name="cat"><option value="general">general</option><option value="primera">primera</option><option value="ascenso">ascenso</option><option value="copas">copas</option><option value="afa">afa</option></select>
-  <label>Torneo (opcional)</label><select name="to"><option value="">—</option><Opts l={to}/></select><label>Redactor (opcional)</label><select name="w"><option value="">—</option><Opts l={wr} t="nombre_visible"/></select>
-  <label>Fecha (vacío = ahora)</label><input name="d" type="datetime-local"/><label>Clubes relacionados (varios)</label><select name="cl" multiple><Opts l={cl}/></select>
-  <label>Estado</label><select name="est"><option value="borrador">borrador</option><option value="publicada">publicada</option></select><Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar'}</button></p></form>}</Async>}
 const CATS=[['primera','Primera'],['primera-nacional','Primera Nacional'],['primera-b-metropolitana','Primera B Metropolitana'],['primera-c','Primera C'],['federal-a','Torneo Federal A']]
 const fechas=n=>Array.from({length:n},(_,i)=>`Fecha ${i+1}`),KO=['Octavos de final','Cuartos de final','Semifinal','Final']
 // Instancias por torneo (se puede editar acá). Torneos que no figuran usan un número de fecha libre.
@@ -82,7 +71,7 @@ function ContentAdmin(){const[v,setV]=useState(0),[m,setM]=useState(null),[ed,se
  async function run(p,ok){const{error}=await p;if(error)return setM({err:1,t:error.message});setM({t:ok});setV(x=>x+1)}
  const del=(t,x)=>confirm(`¿Eliminar "${x.titulo}"? No se puede deshacer.`)&&run(t==='n'?sb.from('news').delete().eq('id',x.id):sb.from('matches').delete().eq('id',x.match_id),'Eliminado.')
  const tog=x=>run(sb.from('news').update({estado:x.estado==='publicada'?'borrador':'publicada'}).eq('id',x.id),'Estado actualizado.')
- const row=(x,t)=><div key={x.id}><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid var(--line)'}}><span style={{flex:1,minWidth:150}}>{x.titulo} <small className="muted">({x.estado})</small></span><button className="tag" onClick={()=>setEd(ed?.x.id===x.id?null:{t,x})}>Editar</button>{t==='n'&&<button className="tag" onClick={()=>tog(x)}>{x.estado==='publicada'?'Pasar a borrador':'Publicar'}</button>}<button className="tag" onClick={()=>del(t,x)}>Eliminar</button></div>{ed?.x.id===x.id&&<EditForm t={t} x={x} done={()=>{setEd(null);setV(y=>y+1)}}/>}</div>
+ const row=(x,t)=><div key={x.id}><div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'8px 0',borderBottom:'1px solid var(--line)'}}><span style={{flex:1,minWidth:150}}>{x.titulo} <small className="muted">({x.estado})</small></span><button className="tag" onClick={()=>setEd(ed?.x.id===x.id?null:{t,x})}>Editar</button>{t==='n'&&<button className="tag" onClick={()=>tog(x)}>{x.estado==='publicada'?'Pasar a borrador':'Publicar'}</button>}<button className="tag" onClick={()=>del(t,x)}>Eliminar</button></div>{ed?.x.id===x.id&&(t==='n'?<NewsEditor x={x} done={()=>{setEd(null);setV(y=>y+1)}}/>:<EditForm t={t} x={x} done={()=>{setEd(null);setV(y=>y+1)}}/>)}</div>
  return <div><h3>Noticias</h3><Msg m={m}/><Async s={s}>{d=><>{d.n.map(x=>row(x,'n'))}{!d.n.length&&<p className="muted">No hay noticias.</p>}<h3 style={{marginTop:20}}>Crónicas</h3>{d.c.map(x=>row(x,'c'))}{!d.c.length&&<p className="muted">No hay crónicas.</p>}</>}</Async></div>}
 function InterviewForm(){const[img,setImg]=useState(null),[busy,setBusy]=useState(false),[m,setM]=useState(null)
  async function save(e){e.preventDefault();if(busy)return;const fm=e.target,f=new FormData(fm);setBusy(true);setM(null);const titulo=f.get('t').trim(),slug=slugify(titulo)
@@ -146,4 +135,4 @@ export default function Admin(){useTitle('Admin');const[s,setS]=useState({loadin
  if(!s.admin)return <div className="w art"><h1>Sin permisos</h1><p className="err">{s.error||'Esta cuenta no es administradora.'}</p><button className="btn" onClick={()=>sb.auth.signOut()}>Cerrar sesión</button></div>
  return <div className="w art"><h1>Panel de administración</h1><div className="tabs">{Object.entries(AREAS).map(([k,[nm,sb2]])=><button key={k} className={'tag'+(area===k?' on':'')} onClick={()=>{setArea(k);setTab(sb2[0][0])}}>{nm}</button>)}<button className="tag" onClick={()=>sb.auth.signOut()}>Cerrar sesión</button></div>
   <div className="tabs" style={{marginTop:-4}}>{AREAS[area][1].map(([k,nm])=><button key={k} className={'tag'+(tab===k?' on':'')} style={{opacity:tab===k?1:.75}} onClick={()=>setTab(k)}>{nm}</button>)}</div>
-  {tab==='n'?<NewsForm/>:tab==='c'?<ChrForm/>:tab==='k'?<ClubsAdmin/>:tab==='w'?<WritersAdmin/>:tab==='i'?<InterviewForm/>:tab==='o'?<ContentAdmin/>:tab==='a'?<AfaLogo/>:tab==='mf'?<ProgramEdit slug="meraki-futbol"/>:tab==='rp'?<ProgramsAdmin/>:tab==='rg'?<ScheduleAdmin/>:tab==='rc'?<RadioAdmin/>:<QuienesAdmin/>}</div>}
+  {tab==='n'?<NewsEditor/>:tab==='c'?<ChrForm/>:tab==='k'?<ClubsAdmin/>:tab==='w'?<WritersAdmin/>:tab==='i'?<InterviewForm/>:tab==='o'?<ContentAdmin/>:tab==='a'?<AfaLogo/>:tab==='mf'?<ProgramEdit slug="meraki-futbol"/>:tab==='rp'?<ProgramsAdmin/>:tab==='rg'?<ScheduleAdmin/>:tab==='rc'?<RadioAdmin/>:<QuienesAdmin/>}</div>}
