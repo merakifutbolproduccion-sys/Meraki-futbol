@@ -5,7 +5,9 @@ export function grupo(path){
   return({noticias:'noticia',cronicas:'cronica',clubes:'club',entrevistas:'entrevista',ascenso:'ascenso',copas:'copas',afa:'afa',programas:'programa',futbol:'futbol',grilla:'grilla','en-vivo':'en-vivo'})[s]||s||'otro'
 }
 export function initGA(id){
-  if(!id||typeof window==='undefined'||window.__ga)return false
+  if(typeof window==='undefined'||window.__ga)return false
+  id=String(id||'').trim()
+  if(!/^G-[A-Z0-9]{6,}$/.test(id)){console.warn('[GA4] Measurement ID inválido o vacío:',JSON.stringify(id));return false}
   window.__ga=id
   window.dataLayer=window.dataLayer||[]
   window.gtag=function(){window.dataLayer.push(arguments)}
