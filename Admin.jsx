@@ -8,6 +8,7 @@ import NewsEditor from './NewsEditor'
 import {RichEditor,ImgPick} from './Editor'
 import {isHtml,sanitize,textToHtml,htmlToText} from './editorUtils'
 import {useSeo,SeoPanel,SEO_COLS,isColumnError} from './SeoPanel'
+import StatsAdmin from './StatsAdmin'
 function Img({onUrl,label,max}){const[p,setP]=useState(null),[st,setSt]=useState('')
  async function pick(e){const f0=e.target.files[0];if(!f0)return;onUrl(null);setP(null);setSt('Optimizando imagen…')
   let r;try{r=await optimizeImage(f0,{maxSide:max||1600})}catch(er){e.target.value='';return setSt('Error: '+er.message)}
@@ -139,7 +140,7 @@ function QuienesAdmin(){const[v,setV]=useState(0),[sel,setSel]=useState('radio')
  async function save(e){e.preventDefault();if(busy)return;const t=new FormData(e.target).get('t')||'';setBusy(true);setM(null)
   const{error}=await(sel==='radio'?sb.from('radio_settings').upsert({key:'quienes_somos',value:t}):sb.from('programs').update({quienes_somos:t||null}).eq('id',sel));setBusy(false);if(error)return setM({err:1,t:error.message});setM({t:'Guardado ✔'});setV(x=>x+1)}
  return <Async s={s}>{d=>{const cur=sel==='radio'?d.r:(d.p.find(x=>x.id===sel)?.quienes_somos||'');return <form onSubmit={save}><h3>¿Quiénes somos?</h3><label>¿Quiénes somos de:</label><select value={sel} onChange={e=>setSel(e.target.value)}><option value="radio">FM Meraki</option>{d.p.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select><label>Texto</label><textarea name="t" rows="9" key={sel+'-'+v} defaultValue={cur}/><Msg m={m}/><p><button className="btn" disabled={busy} style={{border:0,cursor:'pointer'}}>{busy?'Guardando…':'Guardar texto'}</button></p></form>}}</Async>}
-const AREAS={f:['Meraki Fútbol',[['n','Nueva noticia'],['c','Nueva crónica'],['k','Clubes'],['w','Cronistas'],['i','Entrevista'],['o','Contenido'],['a','AFA (logo)'],['mf','Logo, redes e info']]],r:['FM Meraki',[['rp','Programas'],['rg','Grilla'],['rc','Radio FM Meraki']]],t:['Textos y sitio',[['q','¿Quiénes somos?']]]}
+const AREAS={f:['Meraki Fútbol',[['n','Nueva noticia'],['c','Nueva crónica'],['k','Clubes'],['w','Cronistas'],['i','Entrevista'],['o','Contenido'],['a','AFA (logo)'],['mf','Logo, redes e info']]],r:['FM Meraki',[['rp','Programas'],['rg','Grilla'],['rc','Radio FM Meraki']]],t:['Textos y sitio',[['q','¿Quiénes somos?']]],s:['📊 Estadísticas',[['st','Resumen']]]}
 export default function Admin(){useTitle('Admin');const[s,setS]=useState({loading:true}),[tab,setTab]=useState('n'),[area,setArea]=useState('f'),[e,setE]=useState(null),[busy,setBusy]=useState(false)
  useEffect(()=>{const chk=async ses=>{if(!ses)return setS({});const{data,error}=await sb.rpc('is_admin');setS({user:ses.user,admin:data===true,error:error?.message})}
   sb.auth.getSession().then(({data})=>chk(data.session));const{data:l}=sb.auth.onAuthStateChange((_,ses)=>setTimeout(()=>chk(ses),0));return()=>l.subscription.unsubscribe()},[])
@@ -149,4 +150,4 @@ export default function Admin(){useTitle('Admin');const[s,setS]=useState({loadin
  if(!s.admin)return <div className="w art"><h1>Sin permisos</h1><p className="err">{s.error||'Esta cuenta no es administradora.'}</p><button className="btn" onClick={()=>sb.auth.signOut()}>Cerrar sesión</button></div>
  return <div className="w art"><h1>Panel de administración</h1><div className="tabs">{Object.entries(AREAS).map(([k,[nm,sb2]])=><button key={k} className={'tag'+(area===k?' on':'')} onClick={()=>{setArea(k);setTab(sb2[0][0])}}>{nm}</button>)}<button className="tag" onClick={()=>sb.auth.signOut()}>Cerrar sesión</button></div>
   <div className="tabs" style={{marginTop:-4}}>{AREAS[area][1].map(([k,nm])=><button key={k} className={'tag'+(tab===k?' on':'')} style={{opacity:tab===k?1:.75}} onClick={()=>setTab(k)}>{nm}</button>)}</div>
-  {tab==='n'?<NewsEditor/>:tab==='c'?<ChrForm/>:tab==='k'?<ClubsAdmin/>:tab==='w'?<WritersAdmin/>:tab==='i'?<InterviewForm/>:tab==='o'?<ContentAdmin/>:tab==='a'?<AfaLogo/>:tab==='mf'?<ProgramEdit slug="meraki-futbol"/>:tab==='rp'?<ProgramsAdmin/>:tab==='rg'?<ScheduleAdmin/>:tab==='rc'?<RadioAdmin/>:<QuienesAdmin/>}</div>}
+  {tab==='n'?<NewsEditor/>:tab==='c'?<ChrForm/>:tab==='k'?<ClubsAdmin/>:tab==='w'?<WritersAdmin/>:tab==='i'?<InterviewForm/>:tab==='o'?<ContentAdmin/>:tab==='a'?<AfaLogo/>:tab==='mf'?<ProgramEdit slug="meraki-futbol"/>:tab==='rp'?<ProgramsAdmin/>:tab==='rg'?<ScheduleAdmin/>:tab==='rc'?<RadioAdmin/>:tab==='st'?<StatsAdmin/>:<QuienesAdmin/>}</div>}
