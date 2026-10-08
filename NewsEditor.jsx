@@ -3,10 +3,11 @@ import {sb} from './supabase'
 import {api} from './api'
 import {Async,useData,slugify,fdate} from './ui'
 import {RichEditor,ImgPick,Vista} from './Editor'
+import {GalleryEditor,GalleryView,writeSmart} from './Galeria'
 import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editorUtils'
 
 // Columnas nuevas (se agregan con migracion-seo-noticias.sql). Si todavía no existen, se guarda igual lo básico.
-const NEWCOLS=['seo_titulo','meta_descripcion','imagen_alt','tema_principal','temas','updated_at']
+const NEWCOLS=['seo_titulo','meta_descripcion','imagen_alt','tema_principal','temas','updated_at','galeria']
 const pad=n=>String(n).padStart(2,'0')
 const toLocal=d=>{if(!d)return '';const t=new Date(d);return isNaN(t)?'':`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`}
 const initHtml=c=>isHtml(c)?sanitize(c):textToHtml(c)
@@ -27,7 +28,7 @@ export default function NewsEditor({x,done}){
 
 function Inner({x,done,cl,wr,to,mine,onNew}){
  const bkKey=x?'meraki-noticia-'+x.id:null,canDb=!x||x.estado==='borrador'
- const[f,setF]=useState(()=>({titulo:x?.titulo||'',bajada:x?.bajada||'',html:initHtml(x?.contenido),slug:x?.slug||'',seoTitulo:x?.seo_titulo||'',meta:x?.meta_descripcion||'',alt:x?.imagen_alt||'',tema:x?.tema_principal||'',temas:(x?.temas||[]).join(', '),img:x?.imagen_url||null,cat:x?.categoria||'general',to:x?.tournament_id||'',w:x?.writer_id||'',d:x?toLocal(x.fecha):'',est:x?.estado||'borrador',clubIds:mine}))
+ const[f,setF]=useState(()=>({titulo:x?.titulo||'',bajada:x?.bajada||'',html:initHtml(x?.contenido),slug:x?.slug||'',seoTitulo:x?.seo_titulo||'',meta:x?.meta_descripcion||'',alt:x?.imagen_alt||'',tema:x?.tema_principal||'',temas:(x?.temas||[]).join(', '),img:x?.imagen_url||null,galeria:Array.isArray(x?.galeria)?x.galeria:[],cat:x?.categoria||'general',to:x?.tournament_id||'',w:x?.writer_id||'',d:x?toLocal(x.fecha):'',est:x?.estado||'borrador',clubIds:mine}))
  // tch = "lo tocó la persona". Mientras no lo toque, el sistema sugiere y va actualizando el valor.
  const[tch,setTch]=useState(()=>({slug:!!x,seo:!!x?.seo_titulo,meta:!!x?.meta_descripcion,alt:!!x?.imagen_alt,tema:!!x?.tema_principal,temas:!!(x?.temas&&x.temas.length)}))
  const[view,setView]=useState('ed'),[busy,setBusy]=useState(false),[upl,setUpl]=useState(false),[m,setM]=useState(null),[auto,setAuto]=useState(''),[ek,setEk]=useState(0)
@@ -56,15 +57,14 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
 
  async function write(row){
   const run=r=>idRef.current?sb.from('news').update(r).eq('id',idRef.current).select('id').single():sb.from('news').insert(r).select('id').single()
-  let r=await run(row),legacy=false
-  if(r.error&&/column|PGRST204/i.test((r.error.code||'')+' '+r.error.message)){const lite={...row};NEWCOLS.forEach(c=>delete lite[c]);r=await run(lite);legacy=!r.error}
-  if(r.error)throw r.error;idRef.current=r.data.id;return legacy}
+  const r=await writeSmart(run,row,NEWCOLS)
+  if(r.error)throw r.error;idRef.current=r.data.id;return r.dropped.length?r.dropped:false}
  // Guarda siempre sobre la misma fila (no duplica noticias).
  async function persist(estado){
   const now=new Date().toISOString(),finalSlug=await freeSlug(slug||suggestSlug(f.titulo)||'noticia',idRef.current)
   const fecha=f.d?new Date(f.d).toISOString():(x?.estado==='publicada'&&x.fecha?x.fecha:estado==='publicada'?now:(x?.fecha||now))
   const legacy=await write({titulo:f.titulo.trim(),slug:finalSlug,bajada:f.bajada,contenido:sanitize(f.html),imagen_url:f.img,categoria:f.cat,tournament_id:f.to||null,writer_id:f.w||null,fecha,estado,
-   seo_titulo:seoTitulo.trim()||null,meta_descripcion:meta.trim()||null,imagen_alt:alt.trim()||null,tema_principal:tema.trim()||null,temas:temasArr,updated_at:now})
+   seo_titulo:seoTitulo.trim()||null,meta_descripcion:meta.trim()||null,imagen_alt:alt.trim()||null,tema_principal:tema.trim()||null,temas:temasArr,updated_at:now,galeria:f.galeria})
   return{legacy,slug:finalSlug}}
  async function syncClubs(){const want=new Set(f.clubIds),id=idRef.current,add=[...want].filter(c=>!clubsDb.current.has(c)),del=[...clubsDb.current].filter(c=>!want.has(c))
   if(add.length){const r=await sb.from('news_clubs').insert(add.map(club_id=>({news_id:id,club_id})));if(r.error)throw new Error('La noticia se guardó, pero fallaron los clubes: '+r.error.message);add.forEach(c=>clubsDb.current.add(c))}
@@ -75,7 +75,7 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
   if(!text.trim())return setM({err:1,t:'Escribí el contenido de la noticia.'})
   setBusy(true);setM(null);while(saving.current)await sleep(150);saving.current=true
   try{const r=await persist(f.est);await syncClubs();if(bkKey)localStorage.removeItem(bkKey)
-   if(r.legacy)return setM({err:1,t:'Guardada, pero la base de datos todavía no tiene los campos SEO. Ejecutá el archivo migracion-seo-noticias.sql en Supabase y volvé a guardar.'})
+   if(r.legacy)return setM({err:1,t:'Guardada, pero la base de datos todavía no tiene estos campos: '+r.legacy.join(', ')+'. Ejecutá en Supabase '+(r.legacy.includes('galeria')?'migracion-galeria.sql':'')+(r.legacy.includes('galeria')&&r.legacy.some(c=>c!=='galeria')?' y ':'')+(r.legacy.some(c=>c!=='galeria')?'migracion-seo-noticias.sql':'')+' y volvé a guardar.'})
    if(x)done();else onNew({t:`Noticia guardada (${f.est}). URL: /noticias/${r.slug}`})}
   catch(er){setM({err:1,t:er.message||String(er)})}
   finally{saving.current=false;setBusy(false)}}
@@ -86,7 +86,7 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
   const t=setTimeout(async()=>{if(saving.current||f.titulo.trim().length<3)return
    const hora=()=>new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
    if(canDb){saving.current=true
-    try{const r=await persist('borrador');setAuto((r.legacy?'Guardado (faltan los campos SEO en la base) ':'Guardado automáticamente ')+hora())}
+    try{const r=await persist('borrador');setAuto((r.legacy?'Guardado (faltan campos nuevos en la base: '+r.legacy.join(', ')+') ':'Guardado automáticamente ')+hora())}
     catch(er){setAuto('No se pudo autoguardar: '+(er.message||er))}finally{saving.current=false}}
    else try{localStorage.setItem(bkKey,JSON.stringify({f,tch,t:Date.now()}));setAuto('Copia de seguridad en este navegador '+hora())}catch{}},3000)
   return()=>clearTimeout(t)},[snap])
@@ -101,8 +101,9 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
   <label>Bajada</label><input value={f.bajada} onChange={e=>set('bajada',e.target.value)}/>
   <div className="tabs" style={{marginTop:14}}><button type="button" className={'tag'+(view==='ed'?' on':'')} onClick={()=>setView('ed')}>Editor</button><button type="button" className={'tag'+(view==='pv'?' on':'')} onClick={()=>setView('pv')}>Vista previa</button></div>
   <div style={{display:view==='ed'?'block':'none'}}><RichEditor key={ek} initial={f.html} onChange={h=>set('html',h)} onBusy={setUpl}/></div>
-  {view==='pv'&&<Vista tag={tag} titulo={f.titulo} bajada={f.bajada} img={f.img} alt={alt} html={f.html} meta={[fdate(f.d||new Date()),wr.find(w=>w.id===f.w)?.nombre_visible].filter(Boolean).join(' · ')}/>}
+  {view==='pv'&&<><Vista tag={tag} titulo={f.titulo} bajada={f.bajada} img={f.img} alt={alt} html={f.html} meta={[fdate(f.d||new Date()),wr.find(w=>w.id===f.w)?.nombre_visible].filter(Boolean).join(' · ')}/>{f.galeria.length>0&&<div className="art paper" style={{margin:'8px 0'}}><GalleryView items={f.galeria}/></div>}</>}
   <ImgPick value={f.img} onUrl={u=>set('img',u)} onBusy={setUpl}/>
+  <GalleryEditor value={f.galeria} onChange={v=>set('galeria',v)} onBusy={setUpl}/>
   <label>Categoría</label><select value={f.cat} onChange={e=>set('cat',e.target.value)}>{['general','primera','ascenso','copas','afa'].map(c=><option key={c} value={c}>{c}</option>)}</select>
   <label>Torneo (opcional)</label><select value={f.to} onChange={e=>set('to',e.target.value)}><option value="">—</option><Opts l={to}/></select>
   <label>Redactor (opcional)</label><select value={f.w} onChange={e=>set('w',e.target.value)}><option value="">—</option><Opts l={wr} t="nombre_visible"/></select>

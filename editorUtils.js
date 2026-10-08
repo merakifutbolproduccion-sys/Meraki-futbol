@@ -140,7 +140,7 @@ export function newsJsonLd(n,{url,site,logo}){
  const clubs=(n.news_clubs||[]).map(x=>x.clubs).filter(Boolean)
  const o={'@context':'https://schema.org','@type':'NewsArticle',mainEntityOfPage:{'@type':'WebPage','@id':url},url,
   headline:String(n.seo_titulo||n.titulo||'').slice(0,110),description:n.meta_descripcion||n.bajada||undefined,
-  image:n.imagen_url?[n.imagen_url]:undefined,datePublished:n.fecha||undefined,dateModified:n.updated_at||n.fecha||undefined,
+  image:(()=>{const a=[n.imagen_url,...(Array.isArray(n.galeria)?n.galeria.map(g=>g&&g.url):[])].filter(Boolean);return a.length?[...new Set(a)]:undefined})(),datePublished:n.fecha||undefined,dateModified:n.updated_at||n.fecha||undefined,
   author:n.writers?.nombre_visible?{'@type':'Person',name:n.writers.nombre_visible}:{'@type':'Organization',name:site},
   publisher:{'@type':'Organization',name:site,logo:logo?{'@type':'ImageObject',url:logo}:undefined},
   articleSection:n.categoria||undefined,inLanguage:'es-AR',

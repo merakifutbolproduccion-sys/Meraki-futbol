@@ -110,3 +110,18 @@ footer{background:linear-gradient(180deg,#07130d,#020604);border-top:2px solid #
 .st-help{background:var(--bg2);border:1px solid var(--line);border-left:4px solid #e0a23a;padding:14px 16px;margin:10px 0}
 .st-help p{margin:6px 0 10px}.st-help ul{margin:0 0 12px;padding-left:18px}.st-help code{background:#0003;padding:2px 5px}
 @media(min-width:560px){.st-cards{grid-template-columns:repeat(3,minmax(0,1fr))}.st-card.big{grid-column:auto}}
+
+/* ---- Galería de fotos (panel y web pública) ---- */
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:6px}
+.gal-item{background:var(--bg2);border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:6px}.gal-item.over{border-color:var(--g);box-shadow:0 0 0 2px #1faa4a55}
+.gal-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#000}
+.gal-bar{display:flex;gap:4px;align-items:center;font-size:12px}.gal-bar button{background:var(--bg);border:1px solid var(--line);color:#fff;padding:6px 9px;cursor:pointer;font:inherit}.gal-bar button:disabled{opacity:.35;cursor:default}
+.gal-item input{font-size:12px!important;padding:6px!important}
+.galeria{margin:22px 0 6px}.galeria .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.galeria .gal.uno{grid-template-columns:1fr}
+.galeria figure{margin:0}.galeria figure button{display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in}
+.galeria img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}.galeria .gal.uno img{aspect-ratio:auto;max-height:520px}
+.galeria figcaption{font-size:.8em;color:#4d6356;margin-top:4px}
+.lbx{position:fixed;inset:0;z-index:60;background:#000e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;color:#fff}
+.lbx img{max-width:100%;max-height:78vh;object-fit:contain}.lbx p{margin:10px 0 0;text-align:center;max-width:700px}
+.lbx button{position:absolute;background:#0008;border:1px solid #fff4;color:#fff;font-size:26px;line-height:1;width:46px;height:46px;cursor:pointer}
+.lbx-x{top:max(12px,env(safe-area-inset-top,0px));right:12px}.lbx-p{left:8px;top:50%}.lbx-s{right:8px;top:50%}.lbx-n{position:absolute;top:max(18px,env(safe-area-inset-top,0px));left:14px;font-size:13px;color:#cde}
