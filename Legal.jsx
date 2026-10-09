@@ -24,17 +24,20 @@ Las opiniones y declaraciones de personas entrevistadas o de columnistas son res
 Navegar el sitio no requiere registrarse. Podemos medir las visitas con herramientas de estadísticas como Google Analytics, que usan cookies o identificadores para contar visitas y páginas vistas de forma general. Podés bloquear las cookies desde la configuración de tu navegador.
 Si nos escribís por mail, WhatsApp o redes, usamos tus datos solo para responderte. No los vendemos. Según la Ley 25.326 de Protección de los Datos Personales, tenés derecho a pedir acceso, corrección o eliminación de tus datos escribiéndonos desde Contacto. La Agencia de Acceso a la Información Pública es el órgano de control de esa ley.
 
-7. ENLACES EXTERNOS Y REDES
+7. COMENTARIOS DEL PÚBLICO
+Quien deja un comentario nos informa su nombre, apellido y mensaje. Revisamos cada comentario antes de publicarlo y, si se aprueba, se muestran el nombre, el apellido y el mensaje en el sitio. Podemos no publicar o eliminar comentarios ofensivos, con datos personales de terceros, publicidad o contenido ilegal. Quien comentó puede pedir que se elimine su comentario escribiendo desde Contacto. Cada persona es responsable de lo que escribe.
+
+8. ENLACES EXTERNOS Y REDES
 El sitio puede enlazar a páginas, videos o redes de terceros. No controlamos su contenido ni sus políticas.
 
-8. RADIO EN VIVO
+9. RADIO EN VIVO
 La transmisión de FM Meraki incluye programas y música. Los derechos sobre los contenidos transmitidos pertenecen a sus titulares.
 
-9. CAMBIOS
+10. CAMBIOS
 Podemos actualizar este texto cuando sea necesario. La versión vigente es la que aparece en esta página.`
 
 export default function Legal(){
-  useTitle('Información legal')
+  useTitle('Legales y copyright')
   const s=useData(api.radio)
-  return <div className="w"><h1>Información legal</h1>
-   <Async s={s}>{r=><div className="paper" style={{whiteSpace:'pre-wrap',margin:0}}>{(r.legal||'').trim()||BASE}</div>}</Async></div>}
+  return <div className="w"><h1>Legales y copyright</h1>
+   <Async s={s}>{r=><><div className="paper" style={{whiteSpace:'pre-wrap',margin:0}}>{(r.legal||'').trim()||BASE}</div><p className="muted" style={{marginTop:12}}>© {new Date().getFullYear()} Meraki Fútbol / FM Meraki. Todos los derechos reservados.</p></>}</Async></div>}
