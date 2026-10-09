@@ -160,6 +160,7 @@ function ComentariosAdmin(){const[v,setV]=useState(0),[m,setM]=useState(''),s=us
    {rows.map(c=><div key={c.id} className="paper" style={{margin:'0 0 10px',whiteSpace:'pre-wrap',borderLeft:'4px solid '+(c.aprobado?'#2fb35e':c.leido?'#888':'#ffd479')}}>
     <b>{c.nombre} {c.apellido}</b> <small className="muted">· {new Date(c.created_at).toLocaleString('es-AR')} · {c.aprobado?'PUBLICADO':c.leido?'Oculto':'NUEVO'}</small>
     <div style={{margin:'6px 0'}}>{c.mensaje}</div>
+    <small className="muted">{c.nota_slug?<>En la nota: <a href={`/${c.nota_tipo}/${c.nota_slug}`} target="_blank" rel="noopener noreferrer">/{c.nota_tipo}/{c.nota_slug}</a></>:'Comentario general (página Comentarios)'}</small>
     <div className="chips">{c.aprobado?<button type="button" className="tag" onClick={()=>upd(c.id,{aprobado:false,leido:true})}>Ocultar de la web</button>:<button type="button" className="tag" onClick={()=>upd(c.id,{aprobado:true,leido:true})}>Aprobar y publicar</button>}
      {!c.leido&&<button type="button" className="tag" onClick={()=>upd(c.id,{leido:true})}>Marcar como leído</button>}
      <button type="button" className="tag" onClick={()=>del(c.id)}>Eliminar</button></div></div>)}</>}}</Async></div>}
