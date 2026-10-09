@@ -4,6 +4,7 @@ import {api} from './api'
 import {Async,useData,slugify,fdate} from './ui'
 import {RichEditor,ImgPick,Vista} from './Editor'
 import {GalleryEditor,GalleryView,writeSmart} from './Galeria'
+import FotosNota from './FotosNota'
 import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editorUtils'
 
 // Columnas nuevas (se agregan con migracion-seo-noticias.sql). Si todavía no existen, se guarda igual lo básico.
@@ -103,7 +104,7 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
   <div style={{display:view==='ed'?'block':'none'}}><RichEditor key={ek} initial={f.html} onChange={h=>set('html',h)} onBusy={setUpl}/></div>
   {view==='pv'&&<><Vista tag={tag} titulo={f.titulo} bajada={f.bajada} img={f.img} alt={alt} html={f.html} meta={[fdate(f.d||new Date()),wr.find(w=>w.id===f.w)?.nombre_visible].filter(Boolean).join(' · ')}/>{f.galeria.length>0&&<div className="art paper" style={{margin:'8px 0'}}><GalleryView items={f.galeria}/></div>}</>}
   <ImgPick value={f.img} onUrl={u=>set('img',u)} onBusy={setUpl}/>
-  <GalleryEditor value={f.galeria} onChange={v=>set('galeria',v)} onBusy={setUpl}/>
+  <FotosNota onBusy={setUpl}/>{(f.galeria||[]).length>0&&<p className="muted">Esta nota tiene una galería anterior ({f.galeria.length} fotos). <button type="button" className="tag" onClick={()=>confirm('¿Quitar la galería de esta nota? Las fotos del texto no se tocan.')&&set('galeria',[])}>Quitar galería</button></p>}
   <label>Categoría</label><select value={f.cat} onChange={e=>set('cat',e.target.value)}>{['general','primera','ascenso','copas','afa'].map(c=><option key={c} value={c}>{c}</option>)}</select>
   <label>Torneo (opcional)</label><select value={f.to} onChange={e=>set('to',e.target.value)}><option value="">—</option><Opts l={to}/></select>
   <label>Redactor (opcional)</label><select value={f.w} onChange={e=>set('w',e.target.value)}><option value="">—</option><Opts l={wr} t="nombre_visible"/></select>

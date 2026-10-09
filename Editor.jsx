@@ -37,7 +37,12 @@ export function RichEditor({initial,onChange,onBusy}){
  useEffect(()=>{const el=ref.current;el.innerHTML=initial||'<p><br></p>';fixFigures()
   try{document.execCommand('defaultParagraphSeparator',false,'p')}catch{}
   const sel=()=>{const s=getSelection();if(s.rangeCount&&el.contains(s.anchorNode))saved.current=s.getRangeAt(0).cloneRange()}
-  document.addEventListener('selectionchange',sel);return()=>document.removeEventListener('selectionchange',sel)},[])
+  const ins=e=>{const{url,alt,cap}=e.detail||{};if(!url)return;const q=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')
+   focus();{const s=getSelection();if(s.rangeCount&&!s.isCollapsed)s.collapseToEnd()}
+   document.execCommand('insertHTML',false,`<figure contenteditable="false"><img src="${q(url)}" alt="${q((alt||'').trim())}">${cap&&cap.trim()?`<figcaption>${q(cap.trim())}</figcaption>`:''}</figure><p><br></p>`)
+   fixFigures();emit();say('Foto insertada ✔ (tocala en el texto para editar su ALT o eliminarla).')}
+  document.addEventListener('selectionchange',sel);document.addEventListener('meraki-insert-figure',ins)
+  return()=>{document.removeEventListener('selectionchange',sel);document.removeEventListener('meraki-insert-figure',ins)}},[])
  function focus(){const el=ref.current;el.focus();const s=getSelection()
   if(saved.current&&!(s.rangeCount&&el.contains(s.anchorNode))){s.removeAllRanges();s.addRange(saved.current)}}
  const cmd=(c,v)=>{focus();document.execCommand(c,false,v);fixFigures();emit()}
