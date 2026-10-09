@@ -18,7 +18,7 @@ export default function SeoTools({titulo,setTitulo,bajada,text,html,img,ctx,rel}
  const q=searchQuery(c)
  const[tab,setTab]=useState('t')
  const nw=(text||'').trim().split(/\s+/).filter(Boolean).length
- const checks=[[!!String(titulo||'').trim()&&an.items.every(i=>i.ok),'Título claro, con club, torneo o protagonista'],[String(bajada||'').trim().length>=30,'Bajada escrita (un resumen corto)'],[nw>=120,`Texto de al menos 120 palabras (tiene ${nw})`],[!!img,'Imagen principal cargada'],[/href=["'][^"']*\/(noticias|cronicas)\//i.test(html||''),'Un enlace a otra nota tuya (recomendado)']]
+ const checks=[[!!String(titulo||'').trim()&&an.items.every(i=>i.ok),'Título claro, con club o protagonista'],[String(bajada||'').trim().length>=30,'Bajada escrita (un resumen corto)'],[nw>=120,`Texto de al menos 120 palabras (tiene ${nw})`],[!!img,'Imagen principal cargada'],[/href=["'][^"']*\/(noticias|cronicas)\//i.test(html||''),'Un enlace a otra nota tuya (recomendado)']]
  const falta=checks.filter(x=>!x[0]),sem=falta.length===0?['🟢','Lista para publicar','#7ee39a']:falta.length<=2?['🟡',`Te falta${falta.length>1?'n':''} ${falta.length} cosa${falta.length>1?'s':''}`,'#ffd479']:['🔴',`Te faltan ${falta.length} cosas`,'#ff9b9b']
  const flash=t=>{setMsg(t);setTimeout(()=>setMsg(''),2500)}
  async function loadRel(){setRelBusy(true);setRelL(await fetchRelated(rel||{},6));setRelBusy(false)}
@@ -30,7 +30,7 @@ export default function SeoTools({titulo,setTitulo,bajada,text,html,img,ctx,rel}
   {tab==='t'&&<div>
    <p style={{margin:'6px 0'}}><b>{an.n}</b> caracteres <small className="muted">(orientativo: 50 a 65; no es obligatorio)</small></p>
    <ul className="tips">{an.items.map((i,k)=><li key={k} style={{color:i.ok?'#7ee39a':'#ffd479'}}>{i.ok?'✓':'•'} {i.t}</li>)}</ul>
-   <p><button type="button" className="tag" onClick={()=>setAlts(suggestTitles(c))}>Generar 5 alternativas</button> <small className="muted">Se arman solo con los datos de la nota (clubes, torneo, resultado, protagonista). No inventan nada.</small></p>
+   <p><button type="button" className="tag" onClick={()=>setAlts(suggestTitles(c))}>Generar 5 alternativas</button> <small className="muted">Se arman solo con los datos de la nota (clubes, resultado, protagonista; el torneo no hace falta en el título). No inventan nada.</small></p>
    {alts&&(alts.length?<ul style={{listStyle:'none',padding:0}}>{alts.map((a,k)=><li key={k} style={{padding:'6px 0',borderBottom:'1px solid var(--line)'}}><div>{a.t} <small className="muted">({a.t.length} car.)</small></div><small className="muted">{a.why}</small><div className="chips" style={{marginTop:4}}><button type="button" className="tag" onClick={()=>{setTitulo(a.t);flash('Título reemplazado.')}}>Usar como título</button><button type="button" className="tag" onClick={async()=>flash(await copy(a.t)?'Copiado.':'No se pudo copiar.')}>Copiar</button></div></li>)}</ul>:<p className="muted">Faltan datos para armar alternativas: elegí clubes, torneo o protagonista y escribí un título.</p>)}
    {msg&&<small style={{color:'#7ee39a'}}>{msg}</small>}
   </div>}
