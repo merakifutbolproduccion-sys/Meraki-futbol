@@ -1,6 +1,6 @@
 // Mapa del sitio (sitemap.xml) generado en el momento con las noticias, crónicas, entrevistas y clubes publicados.
 const x=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
-const FIJAS=['/','/futbol','/cronicas','/clubes','/ascenso','/copas','/afa','/entrevistas','/quienes-somos','/grilla','/programas','/en-vivo','/nosotros','/contacto','/legal']
+const FIJAS=['/','/futbol','/cronicas','/clubes','/ascenso','/copas','/afa','/entrevistas','/quienes-somos','/grilla','/programas','/en-vivo','/nosotros','/contacto','/legal','/comentarios']
 export default async function handler(req,res){
  const base=(process.env.SITE_URL||process.env.VITE_SITE_URL||`https://${req.headers['x-forwarded-host']||req.headers.host}`).replace(/\/$/,'')
  const url=process.env.VITE_SUPABASE_URL||process.env.SUPABASE_URL,key=process.env.VITE_SUPABASE_PUBLISHABLE_KEY||process.env.VITE_SUPABASE_ANON_KEY||process.env.SUPABASE_ANON_KEY
