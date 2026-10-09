@@ -16,19 +16,29 @@ const waMsg=v=>{const s=String(v||'').trim();if(!s)return '';const m=s.match(/wa
 const Oyente=({r})=>{const h=waMsg(r.whatsapp);return h?<a className="btn" href={h} target="_blank" rel="noopener noreferrer">💬 Mandanos tu mensaje</a>:null}
 const AR=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:'America/Argentina/Buenos_Aires',weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()).map(x=>[x.type,x.value]));return{d:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(p.weekday)+1,m:+p.hour*60+ +p.minute}}
 const mins=t=>{const[h,m]=String(t||'').slice(0,5).split(':');return +h*60+ +m}
-function OnAir({style}){const s=useData(()=>Promise.all([api.schedule(),api.programs()])),[,tick]=useState(0)
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()
+// Reconoce el programa en vivo: 1) el que se escribió a mano en el panel, 2) el nombre que informa el servidor de la radio.
+function useLive(ps,r){const[t,setT]=useState(null)
+ useEffect(()=>{let ok=true;const go=()=>fetch('/api/now-playing').then(x=>x.json()).then(j=>ok&&setT(j)).catch(()=>{});go();const i=setInterval(go,45000);return()=>{ok=false;clearInterval(i)}},[])
+ const man=norm(r?.en_vivo_programa);let p=null
+ if(man)p=ps.find(x=>x.slug===man||norm(x.nombre)===man)||ps.find(x=>norm(x.nombre).includes(man))
+ if(!p&&t&&t.ok&&t.title){const n=norm(t.title);p=ps.find(x=>{const m=norm(x.nombre);return m.length>=4&&n.includes(m)})}
+ return p||null}
+function OnAir({style}){const s=useData(()=>Promise.all([api.schedule(),api.programs(),api.radio()])),[,tick]=useState(0),live=useLive(s.data?s.data[1]:[],s.data?s.data[2]:{})
  useEffect(()=>{const i=setInterval(()=>tick(x=>x+1),60000);return()=>clearInterval(i)},[])
  if(!s.data)return null;const[l,ps]=s.data,sin=new Set(ps.filter(p=>p.sin_horario).map(p=>p.id)),b=l.filter(x=>!sin.has(x.program_id)),n=AR()
  const cur=b.find(x=>x.dia===n.d&&mins(x.hora_inicio)<=n.m&&n.m<mins(x.hora_fin))
  const off=x=>{let o=(x.dia-n.d)*1440+mins(x.hora_inicio)-n.m;return o>0?o:o+10080}
  const nx=b.filter(x=>x!==cur).sort((a,c)=>off(a)-off(c))[0]
- if(!cur&&!nx)return null
+ if(!cur&&!nx&&!live)return null
  const dd=nx&&(nx.dia===n.d&&off(nx)<1440?'':nx.dia===n.d%7+1&&off(nx)<2880?'Mañana ':DIAS[nx.dia-1]+' ')
  return <div style={{border:'1px solid #1f6b3a',borderRadius:10,padding:'10px 14px',background:'rgba(7,19,13,.6)',display:'flex',flexDirection:'column',gap:4,...style}}>
-  {cur&&<span>🔴 <b>Ahora:</b> <Link to={'/programas/'+cur.programs.slug}>{cur.programs.nombre}</Link> <small className="muted">({hm(cur.hora_inicio)} - {hm(cur.hora_fin)})</small></span>}
+  {live&&<span>🔴 <b>En vivo ahora:</b> <Link to={'/programas/'+live.slug}>{live.nombre}</Link></span>}
+  {!live&&cur&&<span>🔴 <b>Ahora:</b> <Link to={'/programas/'+cur.programs.slug}>{cur.programs.nombre}</Link> <small className="muted">({hm(cur.hora_inicio)} - {hm(cur.hora_fin)})</small></span>}
   {nx&&<span>⏭️ <b>Sigue:</b> <Link to={'/programas/'+nx.programs.slug}>{nx.programs.nombre}</Link> <small className="muted">({dd}{hm(nx.hora_inicio)})</small></span>}</div>}
 const Live=({children='Escuchar en vivo →'})=><Link className="btn" to="/en-vivo">{children}</Link>
-const PCard=(p,emo)=><Link key={p.id} className="card" to={'/programas/'+p.slug}><div className={'ph'+(emo?' pe':'')} data-emo={emo?(p.emoji||''):undefined} role="img" aria-label={p.nombre} style={bg(p.logo_url)}/><div className="b"><span className="tag">Programa</span>{p.es_demo&&<span className="tag">Demo</span>}<h3>{p.nombre}</h3><small>{p.conductores||''}</small><span className="btn" style={{marginTop:'auto'}}>Ver programa →</span></div></Link>
+const bgc=u=>u?{backgroundImage:`url(${u})`,backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'}:null
+const PCard=(p,emo)=><Link key={p.id} className="card" to={'/programas/'+p.slug}><div className={'ph'+(emo?' pe':'')} data-emo={emo?(p.emoji||''):undefined} role="img" aria-label={p.nombre} style={bgc(p.logo_url)}/><div className="b"><span className="tag">Programa</span>{p.es_demo&&<span className="tag">Demo</span>}<h3>{p.nombre}</h3><small>{p.conductores||''}</small><span className="btn" style={{marginTop:'auto'}}>Ver programa →</span></div></Link>
 export function RadioHome(){useT('');const s=useData(()=>Promise.all([api.radio(),api.programs()]))
  return <Async s={s}>{([r,ps])=><><section className="hero ph"><div className="w" style={{width:'100%',display:'flex',flexDirection:'column',gap:10}}><span className="tag">Radio</span><h1>{r.titulo_portada||r.nombre||'FM Meraki'}</h1><p>{r.texto_portada||r.descripcion||'[Demo] Completá el texto de la portada desde /admin > FM Radio.'}</p><OnAir style={{alignSelf:'flex-start'}}/><div className="chips"><Live r={r}/><Link className="btn" to="/grilla">Ver la grilla</Link><Oyente r={r}/></div></div></section>
   <div className="w"><Sec t="Programas destacados"/>{ps.filter(p=>p.destacado).length?<Grid>{ps.filter(p=>p.destacado).map(p=>PCard(p,true))}</Grid>:<p className="muted">Todavía no hay programas destacados.</p>}<p><Link className="tag" to="/programas">Ver todos los programas</Link></p>
@@ -40,7 +50,7 @@ export function Grilla(){const s=useData(()=>Promise.all([api.schedule(),api.pro
  {sin.length>0&&<div><Sec t="Programas sin día ni horario fijo"/>{sin.map(p=><Link key={p.id} className="match" to={'/programas/'+p.slug} style={{gridTemplateColumns:'auto 1fr'}}><span style={{textAlign:'left'}}>{p.nombre}{p.es_demo&&' · Demo'}</span><span className="muted" style={{textAlign:'left'}}>Programación especial / sin horario fijo</span></Link>)}</div>}</>}}</Async></div>}
 export function Programas(){const s=useData(api.programs);return <div className="w"><Head t="Programas"/><Async s={s} empty="Todavía no hay programas cargados.">{l=><Grid>{l.map(p=>PCard(p))}</Grid>}</Async></div>}
 function PV({p,r,b}){useT(p.nombre);const has=SOC.some(([k])=>p[k])||p.whatsapp
- return <article className="w art paper"><span className="tag">Programa{p.es_demo?' · DEMO':''}</span><h1>{p.nombre}</h1>{p.logo_url&&<img className="cover" src={p.logo_url} alt={p.nombre}/>}
+ return <article className="w art paper"><span className="tag">Programa{p.es_demo?' · DEMO':''}</span><h1>{p.nombre}</h1>{p.logo_url&&<img className="cover lp" src={p.logo_url} alt={p.nombre}/>}
   {p.sin_horario?<><Sec t="Días y horarios"/><p>Sin día ni horario fijo · Programación especial</p></>:b.length>0&&<><Sec t="Días y horarios"/>{b.map(x=><p key={x.id}>{DIAS[x.dia-1]} · {hm(x.hora_inicio)} - {hm(x.hora_fin)}</p>)}</>}
   {p.conductores&&<><Sec t="Conductores"/><p>{p.conductores}</p></>}{p.descripcion&&<><Sec t="Sobre el programa"/><p style={{whiteSpace:'pre-wrap'}}>{p.descripcion}</p></>}
   {p.quienes_somos&&<><Sec t="¿Quiénes somos?"/><p style={{whiteSpace:'pre-wrap'}}>{p.quienes_somos}</p></>}<Sec t="Redes del programa"/>{has?<Social d={p}/>:<p className="muted">Este programa todavía no cargó sus redes.</p>}
