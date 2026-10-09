@@ -6,14 +6,7 @@
   "rewrites": [
     {
       "source": "/:tipo(noticias|cronicas|entrevistas)/:slug",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Instagram|Pinterest).*"
-        }
-      ],
-      "destination": "/api/og?tipo=:tipo&slug=:slug"
+      "destination": "/api/page?tipo=:tipo&slug=:slug"
     },
     {
       "source": "/sitemap.xml",
@@ -26,6 +19,17 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/admin",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ]
 }

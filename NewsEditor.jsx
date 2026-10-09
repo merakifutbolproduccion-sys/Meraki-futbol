@@ -5,6 +5,7 @@ import {Async,useData,slugify,fdate} from './ui'
 import {RichEditor,ImgPick,Vista} from './Editor'
 import {GalleryEditor,GalleryView,writeSmart} from './Galeria'
 import FotosNota from './FotosNota'
+import SeoTools from './SeoTools'
 import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editorUtils'
 
 // Columnas nuevas (se agregan con migracion-seo-noticias.sql). Si todavía no existen, se guarda igual lo básico.
@@ -112,6 +113,7 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
   <label>Clubes relacionados (varios)</label><select multiple value={f.clubIds} onChange={e=>set('clubIds',[...e.target.selectedOptions].map(o=>o.value))}><Opts l={cl}/></select>
   {missingClubs.length>0&&<p><button type="button" className="tag" onClick={()=>set('clubIds',[...new Set([...f.clubIds,...detClubs.map(c=>c.id)])])}>Marcar clubes que aparecen en la nota: {missingClubs.map(c=>c.nombre).join(', ')}</button></p>}
 
+  <SeoTools titulo={f.titulo} setTitulo={v=>set('titulo',v)} bajada={f.bajada} text={text} ctx={{tipo:'noticia',clubs:cl.filter(c=>f.clubIds.includes(c.id)).map(c=>c.nombre).concat(detClubs.map(c=>c.nombre).filter(n=>!cl.some(c=>c.nombre===n&&f.clubIds.includes(c.id)))),torneo:(to.find(t=>t.id===f.to)||detTo[0]||{}).nombre,tema}} rel={{id:idRef.current,clubSlugs:cl.filter(c=>f.clubIds.includes(c.id)).map(c=>c.slug),tournament_id:f.to||null,temas:temasArr,categoria:f.cat}}/>
   <details className="seo"><summary>Optimización y SEO — {rv.good?'🟢 Publicación bien preparada':`🟡 Hay elementos para mejorar (${rv.missing.length})`}</summary>
    <ul className="chk">{rv.items.map(i=><li key={i.k} style={{color:i.ok?'#7ee39a':'#ffd479'}}>{i.ok?'✓':'○'} {i.label}</li>)}</ul>
    {!rv.good&&<p><b>Falta o conviene revisar:</b> {rv.missing.map(i=>i.label).join(', ')}.</p>}
