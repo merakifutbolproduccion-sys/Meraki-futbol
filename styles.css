@@ -132,3 +132,5 @@ header .logo.prog img{width:auto;height:48px;max-width:120px;border-radius:8px;o
 /* Escudos de clubes: mismo tamaño siempre */
 .club{justify-content:flex-start;min-height:150px}
 .club img,.club .shield{flex:none}
+/* Resultado del partido: letras blancas sobre el cuadro verde (en la crónica se veían negras) */
+.sc,.paper .sc,.paper .match .sc{color:#fff;background:#0d3a1d;white-space:nowrap;border-radius:4px;font-size:1.05rem}
