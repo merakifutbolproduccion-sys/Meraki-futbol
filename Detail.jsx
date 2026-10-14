@@ -8,7 +8,7 @@ import {Link} from 'react-router-dom'
 import {Related} from './Related'
 import {CommentsBox} from './Comentarios'
 import {Async,useData,useTitle,Sec,Grid,NewsCard,ChrCard,Chips,MatchRow,Table,fdate,Share} from './ui'
-const CATN={'primera':'Primera','primera-nacional':'Primera Nacional','primera-b-metropolitana':'Primera B Metropolitana','primera-c':'Primera C','federal-a':'Torneo Federal A'}
+const CATN={'primera':'Primera','primera-nacional':'Primera Nacional','primera-b-metropolitana':'Primera B Metropolitana','primera-c':'Primera C','federal-a':'Torneo Federal A','internacional':'Internacional'}
 const T=({t,d})=>{useTitle(t,d);return null}
 // Etiquetas de cabecera para buscadores y redes (canónica, Open Graph, Twitter, datos estructurados). Se limpian al salir de la nota.
 function useSeoHead(n,seg='noticias'){useEffect(()=>{if(!n)return;const url=location.origin+'/'+seg+'/'+n.slug,made=[]
@@ -32,6 +32,6 @@ export const Ascenso=()=>{const{slug}=useParams(),s=useData(async()=>{const[u,st
 export const Club=()=>{const{slug}=useParams(),s=useData(async()=>{const c=await api.club(slug);if(!c)return null;const[cr,n,m,st]=await Promise.all([api.chronicles(),api.news(null,100),api.matches(),api.standings()]);
  const mine=x=>x.home.slug===slug||x.away.slug===slug,i=st.findIndex?st.find(r=>r.club_id===c.id):null;
  return{c,cr:cr.filter(x=>mine(x.matches)),n:n.filter(x=>x.news_clubs.some(y=>y.clubs.slug===slug)),m:m.filter(mine),pos:i}},[slug]);
- return <Async s={s}>{({c,cr,n,m,pos})=><div className="w art" style={{maxWidth:'none'}}><T t={c.nombre} d={c.descripcion}/><div style={{display:'flex',gap:16,alignItems:'center'}}>{c.escudo_url&&<img src={c.escudo_url} alt={c.nombre} style={{width:112,height:112,objectFit:'contain'}}/>}<h1 style={{margin:0}}>{c.nombre}{c.es_demo?' (demo)':''}</h1></div><p className="muted">{c.ciudad} · Estadio: {c.estadio||'—'}{c.categoria?' · '+(CATN[c.categoria]||c.categoria):''}{pos?` · Posición: ${pos.posicion}º${pos.zona?` (${pos.zona})`:''}`:''}</p><p>{c.descripcion}</p>
+ return <Async s={s}>{({c,cr,n,m,pos})=><div className="w art" style={{maxWidth:'none'}}><T t={c.nombre} d={c.descripcion}/><div style={{display:'flex',gap:16,alignItems:'center'}}>{c.escudo_url&&<img src={c.escudo_url} alt={c.nombre} style={{width:112,height:112,objectFit:'contain'}}/>}<h1 style={{margin:0}}>{c.nombre}{c.es_demo?' (demo)':''}</h1></div><p className="muted">{[c.ciudad,c.pais].filter(Boolean).join(', ')} · Estadio: {c.estadio||'—'}{c.categoria?' · '+(CATN[c.categoria]||c.categoria):''}{pos?` · Posición: ${pos.posicion}º${pos.zona?` (${pos.zona})`:''}`:''}</p><p>{c.descripcion}</p>
  <Sec t="Crónicas"/>{cr.length?<Grid>{cr.map(ChrCard)}</Grid>:<p className="muted">Sin crónicas.</p>}<Sec t="Noticias"/>{n.length?<Grid>{n.map(NewsCard)}</Grid>:<p className="muted">Sin noticias.</p>}
  <Sec t="Resultados"/>{m.filter(x=>x.home_goals!=null).map(x=><MatchRow key={x.id} m={x}/>)}<Sec t="Próximos partidos"/>{m.filter(x=>x.home_goals==null).map(x=><MatchRow key={x.id} m={x}/>)}</div>}</Async>}
