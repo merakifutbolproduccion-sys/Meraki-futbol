@@ -5,6 +5,7 @@ import {Async,useData,slugify,fdate} from './ui'
 import {RichEditor,ImgPick,Vista} from './Editor'
 import {GalleryEditor,GalleryView,writeSmart} from './Galeria'
 import FotosNota from './FotosNota'
+import ImportNota from './ImportNota'
 import SeoTools from './SeoTools'
 import {isHtml,sanitize,textToHtml,htmlToText,paragraphsOf,suggestSlug,suggestSeoTitle,suggestMeta,detectNames,suggestTopic,review} from './editorUtils'
 
@@ -37,6 +38,8 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
  const idRef=useRef(x?.id||null),saving=useRef(false),firstRun=useRef(true),clubsDb=useRef(new Set(mine))
  const set=(a,v)=>setF(p=>({...p,[a]:v}))
  const edit=(a,t,v)=>{set(a,v);setTch(p=>({...p,[t]:v.trim()!==''}))}
+ // Importación de notas (PDF/DOCX/Google Docs): completa este mismo formulario. No guarda ni publica nada por sí sola.
+ const applyImport=d=>{setF(p=>({...p,titulo:d.titulo,bajada:d.bajada,html:d.html,...('w' in d?{w:d.w}:{}),...('d' in d?{d:d.d}:{})}));setTch(p=>({...p,seo:false,meta:false,alt:false,tema:false,temas:false,slug:!!x}));setEk(n=>n+1)}
 
  const text=useMemo(()=>htmlToText(f.html),[f.html])
  const struct=useMemo(()=>paragraphsOf(f.html),[f.html])
@@ -98,6 +101,7 @@ function Inner({x,done,cl,wr,to,mine,onNew}){
  const missingClubs=detClubs.filter(c=>!f.clubIds.includes(c.id))
  const tag=f.cat+(x?.es_demo?' · DEMO':'')
  return <form onSubmit={save} style={x?{background:'var(--bg2)',padding:12,margin:'8px 0'}:null}><h3>{x?'Editar noticia':'Nueva noticia'}</h3>
+  {canDb&&<ImportNota tipo="noticia" writers={wr} selfId={()=>idRef.current} isEmpty={()=>!f.titulo.trim()&&!text.trim()} getCurrent={()=>({titulo:f.titulo,bajada:f.bajada,html:f.html,w:f.w,d:f.d})} onApply={applyImport} nextStep="Revisá el texto, subí la imagen principal y guardá. La noticia queda como borrador hasta que cambies el Estado a «publicada» y guardes."/>}
   {bak&&<div className="seo"><b>Hay cambios sin guardar de la última vez.</b> <button type="button" className="tag" onClick={()=>{setF(bak.f);setTch(bak.tch);setEk(n=>n+1);setBak(null)}}>Recuperar</button> <button type="button" className="tag" onClick={()=>{localStorage.removeItem(bkKey);setBak(null)}}>Descartar</button></div>}
   <label>Título</label><input value={f.titulo} onChange={e=>set('titulo',e.target.value)} required/>
   <label>Bajada</label><input value={f.bajada} onChange={e=>set('bajada',e.target.value)}/>

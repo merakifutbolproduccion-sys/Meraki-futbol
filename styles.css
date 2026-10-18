@@ -134,3 +134,11 @@ header .logo.prog img{width:auto;height:48px;max-width:120px;border-radius:8px;o
 .club img,.club .shield{flex:none}
 /* Resultado del partido: letras blancas sobre el cuadro verde (en la crónica se veían negras) */
 .sc,.paper .sc,.paper .match .sc{color:#fff;background:#0d3a1d;white-space:nowrap;border-radius:4px;font-size:1.05rem}
+
+/* Importación de notas (PDF / DOCX / Google Docs) */
+.imp{border:1px solid var(--line);border-left:4px solid var(--g);background:var(--bg2);padding:12px 14px;margin:10px 0 16px}
+.imp h4{margin:0 0 4px;font-size:15px}
+.imp .dz{border:2px dashed #1f6b3a;padding:22px 12px;text-align:center;cursor:pointer;margin:10px 0 4px;background:#0a1710;transition:.2s}
+.imp .dz:hover,.imp .dz.drag,.imp .dz:focus-visible{background:#0d3a1d;border-color:var(--g);outline:0}
+.imp .dz[aria-disabled=true]{opacity:.5;cursor:wait}
+.imp progress{width:100%;height:10px;accent-color:var(--g)}
