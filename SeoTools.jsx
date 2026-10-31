@@ -1,8 +1,9 @@
 // Herramientas SEO del panel: asistente de títulos, enlaces internos y comparador con OTROS medios.
-// Todo funciona sin IA paga ni APIs externas. No consulta Google ni otros sitios por su cuenta.
+// Todo funciona sin IA paga ni APIs externas; la pestaña "Con IA" es opcional y necesita GEMINI_API_KEY en Vercel. No consulta Google ni otros sitios por su cuenta.
 import {useMemo,useState} from 'react'
 import {analyzeTitle,suggestTitles,searchQuery,googleNewsUrl,googleWebUrl,parseExternal,compare} from './seoTools'
 import {fetchRelated} from './Related'
+import IaPanel from './IaPanel'
 
 const Box=({title,children,open})=><details className="seo" open={open}><summary>{title}</summary>{children}</details>
 async function copy(text,html){try{if(html&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})])}else await navigator.clipboard.writeText(text);return true}catch{try{await navigator.clipboard.writeText(text);return true}catch{return false}}}
@@ -26,7 +27,7 @@ export default function SeoTools({titulo,setTitulo,bajada,text,html,img,ctx,rel}
  return <div style={{margin:'10px 0',border:'1px solid var(--line)',borderRadius:10,padding:12}}>
   <div style={{marginBottom:8}}><b style={{color:sem[2]}}>{sem[0]} {sem[1]}</b> <small className="muted">(es una guía: no bloquea la publicación)</small>
    {falta.length>0&&<ul className="tips" style={{margin:'4px 0 0'}}>{falta.map((x,k)=><li key={k}>• {x[1]}</li>)}</ul>}</div>
-  <div className="chips" style={{marginBottom:8}}>{[['t','Títulos'],['e','Enlaces internos'],['c','Comparar con otros medios']].map(([k,l])=><button type="button" key={k} className={'tag'+(tab===k?' on':'')} onClick={()=>setTab(k)}>{l}</button>)}</div>
+  <div className="chips" style={{marginBottom:8}}>{[['t','Títulos'],['i','Con IA'],['e','Enlaces internos'],['c','Comparar con otros medios']].map(([k,l])=><button type="button" key={k} className={'tag'+(tab===k?' on':'')} onClick={()=>setTab(k)}>{l}</button>)}</div>
   {tab==='t'&&<div>
    <p style={{margin:'6px 0'}}><b>{an.n}</b> caracteres <small className="muted">(orientativo: 50 a 65; no es obligatorio)</small></p>
    <ul className="tips">{an.items.map((i,k)=><li key={k} style={{color:i.ok?'#7ee39a':'#ffd479'}}>{i.ok?'✓':'•'} {i.t}</li>)}</ul>
@@ -34,6 +35,8 @@ export default function SeoTools({titulo,setTitulo,bajada,text,html,img,ctx,rel}
    {alts&&(alts.length?<ul style={{listStyle:'none',padding:0}}>{alts.map((a,k)=><li key={k} style={{padding:'6px 0',borderBottom:'1px solid var(--line)'}}><div>{a.t} <small className="muted">({a.t.length} car.)</small></div><small className="muted">{a.why}</small><div className="chips" style={{marginTop:4}}><button type="button" className="tag" onClick={()=>{setTitulo(a.t);flash('Título reemplazado.')}}>Usar como título</button><button type="button" className="tag" onClick={async()=>flash(await copy(a.t)?'Copiado.':'No se pudo copiar.')}>Copiar</button></div></li>)}</ul>:<p className="muted">Faltan datos para armar alternativas: elegí clubes, torneo o protagonista y escribí un título.</p>)}
    {msg&&<small style={{color:'#7ee39a'}}>{msg}</small>}
   </div>}
+
+  {tab==='i'&&<IaPanel ctx={ctx} titulo={titulo} bajada={bajada} text={text} setTitulo={setTitulo}/>}
 
   {tab==='e'&&<div>
    <p className="muted" style={{margin:'6px 0'}}>Noticias ya publicadas del mismo club, torneo o tema. Copiá el enlace y pegalo en el texto (o seleccioná una palabra y usá el botón de enlace del editor con la dirección copiada).</p>
