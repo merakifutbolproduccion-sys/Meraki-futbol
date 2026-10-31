@@ -8,7 +8,6 @@
 //   GEMINI_MODEL            opcional, por defecto gemini-3.8-flash
 //   GEMINI_FALLBACK_MODEL   opcional, por defecto gemini-3.6-flash
 const API = 'https://generativelanguage.googleapis.com/v1beta/models'
-const sleep = ms => new Promise(r => setTimeout(r, ms))
 const one = (v, n = 300) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n)
 const long = (v, n = 12000) => String(v ?? '').replace(/\r/g, '').trim().slice(0, n)
 
@@ -59,12 +58,15 @@ function avisos(entrada, salida) {
 }
 
 // ---------- Gemini ----------
-async function llamar(model, body, key) {
+// Presupuesto total de tiempo (ms). Tiene que quedar por debajo del maxDuration de vercel.json (30 s),
+// así la función responde con un mensaje claro en vez de que Vercel corte con un 504.
+const PRESUPUESTO = () => Number(process.env.IA_BUDGET_MS) || 24000
+async function llamar(model, body, key, ms) {
   const r = await fetch(`${API}/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(20000)
+    signal: AbortSignal.timeout(ms)
   })
   return { status: r.status, j: await r.json().catch(() => ({})) }
 }
@@ -75,20 +77,21 @@ async function generar(body, key) {
   for (const model of models) {
     let b = body
     for (let k = 0; k < 2; k++) {
-      if (Date.now() - t0 > 22000) return last
-      try { last = await llamar(model, b, key) } catch { last = { status: 0, j: {} }; await sleep(500); continue }
+      const left = PRESUPUESTO() - (Date.now() - t0)
+      if (left < 3000) return { ...last, timeout: true }
+      try { last = await llamar(model, b, key, left) } catch { last = { status: 0, j: {}, timeout: true }; break }
       if (last.status === 200) return { ...last, model }
       if (last.status === 400 && b.generationConfig.thinkingConfig) { // por si el modelo no acepta ese ajuste
         b = { ...b, generationConfig: { ...b.generationConfig } }; delete b.generationConfig.thinkingConfig; continue
       }
-      if ([0, 429, 503].includes(last.status)) { await sleep(700); continue }
-      break // 401/403/404…: no sirve reintentar con este modelo
+      break // saturado, límite o error: pasa directo al modelo de respaldo (no pierde tiempo reintentando)
     }
   }
   return last
 }
 const textoDe = j => (j?.candidates?.[0]?.content?.parts || []).filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('').trim()
-const errorDe = st => st === 429 ? 'Se alcanzó el límite gratuito de Gemini por ahora. Probá de nuevo en unos minutos.'
+const errorDe = (st, to) => to ? 'Gemini tardó demasiado en responder. Probá de nuevo en un momento.'
+  : st === 429 ? 'Se alcanzó el límite gratuito de Gemini por ahora. Probá de nuevo en unos minutos.'
   : st === 503 || st === 0 ? 'Gemini está saturado en este momento. Probá de nuevo en un rato.'
   : st === 400 || st === 401 || st === 403 ? 'Gemini rechazó el pedido: revisá que GEMINI_API_KEY sea válida.'
   : st === 404 ? 'El modelo configurado no existe. Revisá GEMINI_MODEL.' : `Error de Gemini (${st}).`
@@ -126,7 +129,7 @@ export default async function handler(req, res) {
         titulos: { type: 'ARRAY', items: { type: 'OBJECT', properties: { t: { type: 'STRING' }, enfoque: { type: 'STRING' } }, required: ['t'] } },
         bajada: { type: 'STRING' } }, required: ['titulos'] }
     }), key)
-    if (out.status !== 200) return res.status(502).json({ ok: false, error: errorDe(out.status) })
+    if (out.status !== 200) return res.status(502).json({ ok: false, error: errorDe(out.status, out.timeout) })
     let d; try { d = JSON.parse(textoDe(out.j).replace(/^```(?:json)?|```$/g, '').trim()) } catch { return res.status(502).json({ ok: false, error: 'La IA devolvió una respuesta ilegible. Probá de nuevo.' }) }
     const seen = new Set(), titulos = []
     for (const x of d.titulos || []) { const t = one(x?.t, 120); const k = t.toLowerCase(); if (t && !seen.has(k)) { seen.add(k); titulos.push({ t, why: one(x?.enfoque, 60) }) } }
@@ -140,7 +143,7 @@ export default async function handler(req, res) {
     if (long(p.ctx?.texto).length < 150) return res.status(400).json({ ok: false, error: 'Para el borrador hacen falta apuntes del partido (al menos unas 3 o 4 líneas con lo que pasó). Sin material propio la IA inventaría datos.' })
     const user = `${ctx}\n\nTAREA: escribí un borrador de crónica de entre 250 y 400 palabras, en párrafos separados por una línea en blanco, usando SOLO la información de los apuntes. El primer párrafo da el resultado y lo esencial. No agregues nada que no esté en los apuntes (ni minutos, ni nombres, ni contexto). Si los apuntes no alcanzan para una crónica, respondé únicamente "FALTAN_DATOS:" y listá qué datos faltan. No uses títulos ni viñetas.`
     const out = await generar(base(user, { maxOutputTokens: 3000 }), key)
-    if (out.status !== 200) return res.status(502).json({ ok: false, error: errorDe(out.status) })
+    if (out.status !== 200) return res.status(502).json({ ok: false, error: errorDe(out.status, out.timeout) })
     const texto = textoDe(out.j)
     if (!texto) return res.status(502).json({ ok: false, error: 'La IA no devolvió texto. Probá de nuevo.' })
     if (/^FALTAN_DATOS/i.test(texto)) return res.status(200).json({ ok: false, error: 'Con esos apuntes no alcanza.', faltan: texto.replace(/^FALTAN_DATOS:?\s*/i, '') })
